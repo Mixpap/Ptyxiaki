@@ -43,7 +43,7 @@ def plot_map(image,coords):
     ax1 = pywcsgrid2.subplot(111, wcs=coords)
     ax1.imshow(image,origin='low',cmap='jet')
     ax1.add_compass(loc=4,color='black')
-    ax1.colorbar()
+    plt.colorbar()
 
 def plot_maps(map1,w1,map2,w2):
     """
