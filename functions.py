@@ -29,7 +29,7 @@ def cube_to_max(cube):
     mapmax=np.ma.masked_array(np.zeros((Y,X)),mask=np.ones((Y,X)))
     for y in range(Y):
         for x in range(X):
-            value = cube[:,y,x].max() 
+            value = cube[:,y,x].max()
             if (value.dtype=='float32'):
                 mapmax[y,x]=value
     return mapmax
@@ -43,6 +43,7 @@ def plot_map(image,coords):
     ax1 = pywcsgrid2.subplot(111, wcs=coords)
     ax1.imshow(image,origin='low',cmap='jet')
     ax1.add_compass(loc=4,color='black')
+    ax1.colorbar()
 
 def plot_maps(map1,w1,map2,w2):
     """
@@ -66,16 +67,16 @@ def plot_maps(map1,w1,map2,w2):
 
 def initial_est(map1,map_thick,abundance):
     """
-    Initial Estimation of Optical Thickness using 
+    Initial Estimation of Optical Thickness using
     two Isotopes and its abundance ratio
-    Input: Pixel_map of one isotope, Pixel_map of Optical Thick Isotope
+    Input: Pixel_map of one isotope, Pixel_map of Optical Thick Isotope,
     abudance ratio
-    Return: Masked Pixel_map of Optical Thickness 
+    Return: Masked Pixel_map of Optical Thickness
     """
     #T0=np.zeros(map1.shape)
     T0=np.ma.masked_array(np.zeros((map1.shape)),mask=np.zeros((map1.shape)))
     Y,X=T0.shape[0],T0.shape[1]
-    ab = abundance 
+    ab = abundance
     for y in range(Y):
         for x in range(X):
             if (np.isnan(map1[y,x]) or np.isnan(map_thick[y,x]) or (map_thick[y,x]==0.0) or (map1[y,x] >= map_thick[y,x]) or (map1.mask[y,x])or (map_thick.mask[y,x])):
@@ -87,7 +88,7 @@ def initial_est(map1,map_thick,abundance):
 
 def final_est(map1,map_thin,T0,abundance):
     """
-    Final Estimation of Optical Thickness using two Isotopes, 
+    Final Estimation of Optical Thickness using two Isotopes,
     its abundance ratio and the Initial Estimation
     Input: Pixel_map of one isotope, Pixel_map of Optical Thick Isotope,
     Initial estimation Pixel_map and abudance ratio
@@ -106,7 +107,7 @@ def final_est(map1,map_thin,T0,abundance):
             else:
                 i=0
                 f=0.1
-                while f>tol:                   
+                while f>tol:
                     A=map_thin[y,x]/map1[y,x]
                     B=1.0-np.exp(-T[y,x]/ab)
                     C=1.0-np.exp(-T[y,x])
@@ -116,7 +117,7 @@ def final_est(map1,map_thin,T0,abundance):
                     T[y,x]=T[y,x]-(A*B-C)/(A*D-F)
                     f=T[y,x]-temp
                     i=i+1
-                    
+
                     if i>=maxi:
                         break
                 loops.append(i)
@@ -124,7 +125,7 @@ def final_est(map1,map_thin,T0,abundance):
 
 def Tr_est(Ta,nfss=0.77):
     """
-    True Temperature Estimation 
+    True Temperature Estimation
     Input: Pixel_map of Optical Thick Isotope, fss parameter
     Return: Pixel_map of True Temperature
     """
@@ -137,7 +138,7 @@ def Tr_est(Ta,nfss=0.77):
 
 def Tx_est(v,Tr,Tbg=2.7):
     """
-    Excitation Temperature Estimation 
+    Excitation Temperature Estimation
     Input: Frequency of observation in GHz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
     Return: Pixel_map of Excitation Temperature
     """
@@ -158,7 +159,7 @@ def Tx_est(v,Tr,Tbg=2.7):
 
 def thin_est(T):
     """
-    Optical Thin Map 
+    Optical Thin Map
     Input: Pixel_map of Optical Thickness
     Return: Pixel_map of Optical Thin regions (T<1)
     """
@@ -191,7 +192,7 @@ def plot_noisy(map1,y,x,noise):
     ax3.axhline(3*noise,color='r')
     ax3.axvline(x,color='k')
     ax3.set_xlabel('X')
-    
+
     ax4 = plt.subplot(222)
     ax4.imshow(cp,origin='low')
     ax4.set_title('Denoised Map')
@@ -200,7 +201,7 @@ def plot_noisy(map1,y,x,noise):
 
 def Spectra(cube_map,y,x):
     """
-    Spectrum of Selected Coordinates 
+    Spectrum of Selected Coordinates
     Input: Cube Map, pixel Coordinates
     Return: Vector of Spectrum Values
     """
