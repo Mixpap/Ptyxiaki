@@ -139,7 +139,7 @@ def gauss_fit(T,N):
                 try:
                     popt, pcov = curve_fit(gaussian,xx,s)
                     Peak_Map[y,x]=popt[1]
-                    FW[y,x]=2.355*popt[2]
+                    FW[y,x]=2.355*np.abs(popt[2])
                 except:
                     Peak_Map[y,x]=0.0
                     FW[y,x]=0.0
@@ -150,7 +150,7 @@ def gauss_fit(T,N):
 def Tx_est(v,Tr,Tbg=2.7):
     """
     Excitation Temperature Estimation
-    Input: Frequency of observation in GHz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
+    Input: Frequency of observation in Hz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
     Return: Pixel_map of Excitation Temperature
     """
     T0=0.04535*v
