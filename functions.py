@@ -7,6 +7,10 @@ from matplotlib.colors import LogNorm
 
 ab12CO = 77.0
 ab13CO = 8.0
+hk=0.0479924335     #* 10e9
+v_co12_j32=345.796  #GHz
+v_co13_j32=330.5879 #GHz
+v_c18o_j32=329.331  #GHz
 
 def open_map(fits_file):
     """
@@ -153,9 +157,9 @@ def Tx_est(v,Tr,Tbg=2.7):
     Input: Frequency of observation in Hz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
     Return: Pixel_map of Excitation Temperature
     """
-    T0=0.04535*v
-    A=Tr+T0*(np.exp(T0/Tbg)-1)
-    Tx = T0/np.log(1+T0/A)
+    T0=hk*v
+    A=Tr+T0/(np.exp(T0/Tbg)-1)
+    Tx = T0/np.log(1+A)
     return Tx
     # Y,X=Tr.shape[0],Tr.shape[1]
     # Tx=Tr.copy()
