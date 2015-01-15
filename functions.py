@@ -5,13 +5,37 @@ import pywcsgrid2
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LogNorm
+from matplotlib.patches import Rectangle
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes,zoomed_inset_axes,mark_inset
 from scipy.optimize import curve_fit
+
 ab12CO = 77.0
 ab13CO = 8.0
 hk=0.0479924335     #* 10e9
 v_co12_j32=345.796  #GHz
 v_co13_j32=330.5879 #GHz
 v_c18o_j32=329.331  #GHz
+m_CO12=28.01 #atomic units
+m_CO13=29.02 #atomic units
+m_C18O=29.999 #atomic units
+amu=1.66e-24 #g
+k_b=1.38e-16 #erg/K
+
+velocity=np.array([-20.06933116, -20.90281358, -21.736296  , -22.56977842,
+       -23.40326084, -24.23674326, -25.07022567, -25.90370809,
+       -26.73719051, -27.57067293, -28.40415535, -29.23763777,
+       -30.07112019, -30.90460261, -31.73808503, -32.57156745,
+       -33.40504986, -34.23853228, -35.0720147 , -35.90549712,
+       -36.73897954, -37.57246196, -38.40594438, -39.2394268 ,
+       -40.07290922, -40.90639164, -41.73987405, -42.57335647,
+       -43.40683889, -44.24032131, -45.07380373, -45.90728615,
+       -46.74076857, -47.57425099, -48.40773341, -49.24121582,
+       -50.07469824, -50.90818066, -51.74166308, -52.5751455 ,
+       -53.40862792, -54.24211034, -55.07559276, -55.90907518,
+       -56.7425576 , -57.57604001, -58.40952243, -59.24300485,
+       -60.07648727, -60.90996969, -61.74345211, -62.57693453,
+       -63.41041695, -64.24389937, -65.07738179, -65.9108642 ,
+       -66.74434662, -67.57782904, -68.41131146, -69.24479388, -70.0782763 ])
 
 def open_map(fits_file):
     """
@@ -161,12 +185,12 @@ def gauss_fit(T,N):
 def Tx_est(v,Tr,Tbg=2.7):
     """
     Excitation Temperature Estimation
-    Input: Frequency of observation in Hz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
+    Input: Frequency of observation in GHz, Pixel_map of Optical Thick Isotope, Cosmic Background Temperature
     Return: Pixel_map of Excitation Temperature
     """
     T0=hk*v
     A=Tr+T0/(np.exp(T0/Tbg)-1)
-    Tx = T0/np.log(1+A)
+    Tx = T0/np.log(1+T0/A)
     return Tx
 
 
@@ -179,14 +203,11 @@ def Spectra(cube_map,y,x):
     return cube_map[:,y,x]
 
 
-def map_showXY(map12,map12m,map13,map18,ta12,ta13,wcs,y,x):
+def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
     """
     To use with IPython interact
     """
-    #T=CO12[line,::]
-    #ym,xm=(y,x)
-    zlen=61.
-    xx=np.linspace(0,1,zlen)
+    xx=velocity
     #===========CO12=======================
     s12=Spectra(map12,y,x)
     der1=np.diff(s12)
@@ -198,110 +219,183 @@ def map_showXY(map12,map12m,map13,map18,ta12,ta13,wcs,y,x):
         ind2=np.argsort(der2)[2]+1
     m[ind1:ind2]=False
     m[ind2:ind1]=False
-    popt12, pcov12 = curve_fit(gaussian, xx[m], s12[m],p0=[s12.max(),xx[np.argmax(s12)],0.1])
+    try:
+        popt12, pcov12 = curve_fit(gaussian, xx[m], s12[m],p0=[s12.max(),xx[np.argmax(s12)],1.5],diag=(0.01,0.01))
+    except:
+        popt12,pcov12=np.ones((1,3)),np.ones((3,3))
     sd12= np.sqrt(np.diag(pcov12))
-    # if (sd12>popt12).all:
-    #     popt12=np.zeros(3)
-    #     sd12=np.zeros(3)
-
     FWHM12=2.355*np.abs(popt12[2])
+    FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu))
 
     #===========CO13=======================
     s13=Spectra(map13,y,x)
-    #max13 = xx[np.argmax(s13)] #trik
-    #gn=gaussian(xx,1.,max13,2.5*popt12[2]) #trik
-    #s13f=s13*gn #trik
-    popt13, pcov13 = curve_fit(gaussian, xx, s13,p0=[0.25*popt12[0],popt12[1],popt12[2]])
+    popt13, pcov13 = curve_fit(gaussian, xx, s13,p0=[0.25*popt12[0],popt12[1],popt12[2]],diag=(0.01,0.01))
     sd13= np.sqrt(np.diag(pcov13))
-    # if (sd13>popt13).all:
-    #     popt13=np.zeros(3)
-    #     sd13=np.zeros(3)
-
     FWHM13=2.355*np.abs(popt13[2])
+    FWHM13t=0.00001*2.355*np.sqrt(k_b*Tx13[y,x]/(m_CO13*amu))
 
     #===========CO18=======================
     s18=Spectra(map18,y,x)
-    #max18 = xx[np.argmax(s18)] #trik
-    #gn=gaussian(xx,1.,max18,1.2*popt12[2]) #trik
-    #s18f=s18*gn #trik
     #=========================================
-    popt18, pcov18 = curve_fit(gaussian, xx, s18,p0=[0.25*popt13[0],popt13[1],popt13[2]])
+    popt18, pcov18 = curve_fit(gaussian, xx, s18,p0=[0.25*popt13[0],popt13[1],popt13[2]],diag=(0.1,0.1))
     sd18= np.sqrt(np.diag(pcov18))
-
     FWHM18=2.355*np.abs(popt18[2])
+    FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu))
 
-    #================Optical--Thickness==========
+    #================Print==========
     print 'tau12: %0.3f'%ta12[y,x]
     print 'tau13: %0.3f'%ta13[y,x]
+    print '12CO Excitation Temperature: %0.2f'%Tx12[y,x]
+    print '13CO Excitation Temperature: %0.2f'%Tx13[y,x]
+    print 'C18O Excitation Temperature: %0.2f'%Tx18[y,x]
+    print '12CO FWHM: %0.2f km/s || Theoretical (thermal): %0.2f km/s (Ratio:%0.2f) || Larson L: %0.2f pc || Larson M: %0.2f Mo'%(FWHM12,FWHM12t,FWHM12/FWHM12t,(FWHM12/1.1)**(1/0.38),(FWHM12/0.42)**(1/0.2))
+    print '13CO FWHM: %0.2f km/s || Theoretical (thermal): %0.2f km/s (Ratio:%0.2f) || Larson L: %0.2f pc || Larson M: %0.2f Mo'%(FWHM13,FWHM13t,FWHM13/FWHM13t,(FWHM13/1.1)**(1/0.38),(FWHM13/0.42)**(1/0.2))
+    print 'C18O FWHM: %0.2f km/s || Theoretical (thermal): %0.2f km/s (Ratio:%0.2f) || Larson L: %0.2f pc || Larson M: %0.2f Mo'%(FWHM18,FWHM18t,FWHM18/FWHM18t,(FWHM18/1.1)**(1/0.38),(FWHM18/0.42)**(1/0.2))
 
+    #===========================================================================
     #===========PLOTS=======================
-    gs = gridspec.GridSpec(7, 5)
-    #ax1 = pywcsgrid2.subplot(611, wcs=wcs)
-    ax1=plt.subplot(gs[:3,1:4])
-    ax1.imshow(map12m,origin='low',cmap='coolwarm')
-    #ax1.set_title('%s Map'%cmap)
-    #ax1.add_compass(loc=4,color='black')
-    ax1.axvline(x=x,color='r',ls='dashed',linewidth=3.0)
-    ax1.annotate(x,(x+5,5),color='r',size=20)
-    ax1.axhline(y=y,color='r',ls='dashed',linewidth=3.0)
-    ax1.annotate(y,(5,y+5),color='r',size=20)
-    #ax1.annotate(r'$T_{max}=$%0.2f'%(T[y,x]),(x+30,y+10),color='r',size='large')
+    #dy,dx,dv=20,20,10
+    vmax=np.argmax(s12)
+    v1,v2=vmax-dv,vmax+dv
+    #===Map=======================
+    gs = gridspec.GridSpec(10, 7)
+    ax1=plt.subplot(gs[:4,2:])
+    #ax1.set_title('$^{12}CO$ Max Temperatures (Corrected)')
+    mim=ax1.imshow(map12m,origin='low',cmap='coolwarm')
+    ax1.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
+    ax1.annotate('$x$=%d'%x,(x+5,5),color='k',size=20)
+    ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
+    ax1.annotate('$y$=%d'%y,(5,y+5),color='k',size=20)
+    cbar=plt.colorbar(mim,fraction=0.040, pad=0.04)
+    cbar.ax.set_ylabel('$^{12}CO$ Max Temperature $(K)$')
 
-    x_p=0.005
+    #==Zoom=======
+    x1, x2, y1, y2 = x-dx, x+dx, y-dy, y+dy
+    region12=map12m[y1:y2,x1:x2]
+    region13=map13m[y1:y2,x1:x2]
+    if ((x>400) and (y>290)):
+        axins = zoomed_inset_axes(ax1, 6, loc=3) # zoom = 6
+    else:
+        axins = zoomed_inset_axes(ax1, 6, loc=1)
+    c12=axins.contourf(map12m,levels=np.linspace(region12.min(),region12.max(),15))
+    c13=axins.contour(map13m,cmap='gnuplot',levels=np.linspace(region13.min(),region13.max(),7),alpha=0.75)
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+    mark_inset(ax1, axins, loc1=2, loc2=3, fc="none", ec="1.",lw=2.)
 
-    ax2=plt.subplot(gs[3,:])
+    axins.set_title('Max Temperature Contours:$^{13}CO$ \n Max Temperature Filled Contours:$^{12}CO$ ')
+    # axins12 = inset_axes(axins, width='2%', height='25%', loc=2)
+    # cbar12=plt.colorbar(c12,cax=axins12)
+    # cbar12.ax.set_title('$^{12}CO$ \n maxT $(K)$')
+    #
+    # axins13 = inset_axes(axins, width='2%', height='25%', loc=1)
+    # cbar13=plt.colorbar(c13,cax=axins13)
+    # cbar13.ax.set_title('$^{13}CO$ \n maxT $(K)$')
+
+    #==Map-Rectangles
+    dd=0.5
+    rect1 = [Rectangle((x-dx,y-dd), width=2.*dx, height=2.*dd, fill=False,color='red',linewidth=1.2,alpha=0.75)]
+    axins.add_artist(rect1[0])
+    rect2 = [Rectangle((x-dd,y-dy), width=2.*dd, height=2.*dy, fill=False,color='red',linewidth=1.2,alpha=0.75)]
+    axins.add_artist(rect2[0])
+
+    #======X-line=========================
+    ax1y=plt.subplot(gs[4:6,2:])
+    ax1y.set_ylabel('Velocity $(km\,s^{-1})$')
+    ax1y.set_xlabel('X-Pixel')
+    region13y=map13[v1:v2,y,x-dx:x+dx]
+    region12y=map12[v1:v2,y,x-dx:x+dx]
+    cy=ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,levels=np.linspace(np.abs(region13y.min())+2.5,region13y.max(),8),linewidths=2.,cmap='gnuplot',alpha=0.5)
+    c2y=ax1y.contourf(np.arange(x-dx,x+dx,1),velocity[v1:v2],region12y,levels=np.linspace(np.abs(region12y.min())+2.5,region12y.max(),10))
+    ax1y.plot(np.ones(velocity[v1:v2].shape)*x,velocity[v1:v2],'--')
+
+    #===CO12 Colorbar Hacks======================================
+    axinsy12 = inset_axes(ax1y, width='40%', height='3%', loc=2)
+    cbary12=plt.colorbar(c2y,cax=axinsy12,orientation='horizontal')
+    cbary12.ax.set_title(r'$^{12}CO$ Temperature $(K)$')
+
+    #===CO13 Colorbar Hacks======================================
+    axinsy13 = inset_axes(ax1y, width='35%', height='3%', loc=1)
+    cbary13=plt.colorbar(cy,cax=axinsy13,orientation='horizontal')
+    cbary13.ax.set_title(r'$^{13}CO$ Temperature $(K)$')
+
+    #==========Y-line=====================
+    ax1x=plt.subplot(gs[:4,:2])
+    ax1x.set_xlabel('Velocity $(km\,s^{-1})$')
+    ax1x.set_ylabel('Y-Pixel')
+    region13x=map13[v1:v2,y-dy:y+dy,x]
+    region12x=map12[v1:v2,y-dy:y+dy,x]
+    cx=ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),levels=np.linspace(np.abs(region13x.min())+2.5,region13x.max(),8),linewidths=2.,cmap='gnuplot',alpha=0.5)
+    c2x=ax1x.contourf(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region12x),levels=np.linspace(np.abs(region12x.min())+2.5,region12x.max(),10))
+    ax1x.plot(velocity[v1:v2],np.ones(velocity[v1:v2].shape)*y,'--')
+    #axins = zoomed_inset_axes(ax, 6, loc=1)
+
+    #===CO12 Colorbar Hacks======================================
+    axinsx12 = inset_axes(ax1x, width='3%', height='35%', loc=2)
+    cbarx12=plt.colorbar(c2x,cax=axinsx12)
+    cbarx12.ax.set_title('$^{12}CO$ \n Temperature $(K)$')
+
+    #===CO13 Colorbar Hacks======================================
+    axinsx13 = inset_axes(ax1x, width='3%', height='30%', loc=1)
+    cbarx13=plt.colorbar(cx,cax=axinsx13)
+    cbarx13.ax.set_title('$^{13}CO$ \n Temperature $(K)$')
+    axinsx13.yaxis.set_ticks_position("left")
+
+    x_p=xx.min()
+
+    ax2=plt.subplot(gs[6,:])
     y_p=s12.max()
     ax2.set_title(r'$^{12}CO$ // $FWHM=$%0.3f'%(FWHM12))
     ax2.plot(xx,s12,label='CO12')
     ax2.plot(xx[m],s12[m],'ko',label='Masked CO12 Data')
     ax2.plot(xx,gaussian(xx,popt12[0],popt12[1],popt12[2]),label='Fit to Masked Data')
-    if (sd12<popt12).all():
-        ax2.fill_between(xx,gaussian(xx,popt12[0]-sd12[0],popt12[1]-sd12[1],popt12[2]-sd12[2]),gaussian(xx,popt12[0]+sd12[0],popt12[1]+sd12[1],popt12[2]+sd12[2]),alpha=0.1)
+    if (np.abs(sd12)<np.abs(popt12)).all():
+        ax2.fill_between(xx,gaussian(xx,popt12[0]-sd12[0],popt12[1]-sd12[1],popt12[2]-sd12[2]),gaussian(xx,popt12[0]+sd12[0],popt12[1]+sd12[1],popt12[2]+sd12[2]),alpha=0.25)
     ax2.annotate(r'Fit Parameters for CO12: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt12[0],sd12[0],popt12[1],sd12[1],popt12[2],sd12[2]),(x_p,y_p))
-    ax2.axhline(y=popt12[0]/2.,xmin=popt12[1]-FWHM12/2.,xmax=popt12[1]+FWHM12/2.,color='r',label='HalfMaximum of fit CO12')
-    #ax2.annotate(r'$FWHM12=$%0.3f'%(FWHM12),(x_p,1.5*y_p))
-    #ax2.plot(np.linspace(0,1,zlen-2),der2,label='Second Derivative',alpha=0.5,ls='dashed')
-    #ax2.plot(xx,np.where(m==False,popt12[0],0.0),label='Mask',alpha=0.3,ls='dashed')
+    hline=np.linspace(popt12[1]-FWHM12/2,popt12[1]+FWHM12/2,10)
+    ax2.plot(hline,np.ones(hline.shape)*popt12[0]/2,color='r',label='HalfMaximum of fit CO12')
     ax2.plot(xx,s13,alpha=0.7,label='CO13')
     ax2.plot(xx,s18,alpha=0.5,label='C18O')
-    if (sd18<popt18).all():
-        ax2.axvspan(popt18[1]-FWHM18/2.,popt18[1]+FWHM18/2.,alpha=0.25)
+    if (np.abs(sd18)<np.abs(popt18)).all():
+        ax2.axvspan(popt18[1]-FWHM18/2.,popt18[1]+FWHM18/2.,alpha=0.15)
+    if (np.abs(sd13)<np.abs(popt13)).all():
+        ax2.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax2.legend()
 
-    ax3=plt.subplot(gs[4,:])
+    ax3=plt.subplot(gs[7,:])
     y_p=s13.max()
     ax3.set_title(r'$^{13}CO$ // $FWHM=$%0.3f'%(FWHM13))
     ax3.plot(xx,s13,'ko',label='CO13')
     ax3.plot(xx,gaussian(xx,popt13[0],popt13[1],popt13[2]),label='Fit to CO13')
-    if (sd13<popt13).all():
-        ax3.fill_between(xx,gaussian(xx,popt13[0]-sd13[0],popt13[1]-sd13[1],popt13[2]-sd13[2]),gaussian(xx,popt13[0]+sd13[0],popt13[1]+sd13[1],popt13[2]+sd13[2]),alpha=0.1)
+    if (np.abs(sd13)<np.abs(popt13)).all():
+        ax3.fill_between(xx,gaussian(xx,popt13[0]-sd13[0],popt13[1]-sd13[1],popt13[2]-sd13[2]),gaussian(xx,popt13[0]+sd13[0],popt13[1]+sd13[1],popt13[2]+sd13[2]),alpha=0.25)
     ax3.annotate(r'Fit Parameters for CO13: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt13[0],sd13[0],popt13[1],sd13[1],popt13[2],sd13[2]),(x_p,y_p))
-    ax3.axhline(y=popt13[0]/2,xmin=popt13[1]-FWHM13/2,xmax=popt13[1]+FWHM13/2,color='r',label='HalfMaximum of fit CO13')
-    #ax3.annotate(r'$FWHM13=$%0.3f'%(FWHM13),(x_p,1.5*y_p))
+    hline=np.linspace(popt13[1]-FWHM13/2,popt13[1]+FWHM13/2,10)
+    ax3.plot(hline,np.ones(hline.shape)*popt13[0]/2,color='r',label='HalfMaximum of fit CO13')
     ax3.plot(xx,s18,alpha=0.5,label='C18O')
-    if (sd18<popt18).all():
-        ax3.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.25)
+    if (np.abs(sd18)<np.abs(popt18)).all():
+        ax3.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
+    if (np.abs(sd13)<np.abs(popt13)).all():
+        ax3.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax3.legend()
 
-    ax4=plt.subplot(gs[5,:])
+    ax4=plt.subplot(gs[8,:])
     y_p=s18.max()
     ax4.set_title(r'$C^{18}O$ // $FWHM=$%0.3f'%(FWHM18))
     ax4.plot(xx,s18,'ko',label='C18O')
     ax4.plot(xx,gaussian(xx,popt18[0],popt18[1],popt18[2]),label='Fit to CO18')
-    if (sd18<popt18).all():
-        ax4.fill_between(xx,gaussian(xx,popt18[0]-sd18[0],popt18[1]-sd18[1],popt18[2]-sd18[2]),gaussian(xx,popt18[0]+sd18[0],popt18[1]+sd18[1],popt18[2]+sd18[2]),alpha=0.1)
+    if (np.abs(sd18)<np.abs(popt18)).all():
+        ax4.fill_between(xx,gaussian(xx,popt18[0]-sd18[0],popt18[1]-sd18[1],popt18[2]-sd18[2]),gaussian(xx,popt18[0]+sd18[0],popt18[1]+sd18[1],popt18[2]+sd18[2]),alpha=0.25)
     ax4.annotate(r'Fit Parameters for CO18: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt18[0],sd18[0],popt18[1],sd18[1],popt18[2],sd18[2]),(x_p,y_p))
-    ax4.axhline(y=popt18[0]/2,xmin=popt18[1]-FWHM18/2,xmax=popt18[1]+FWHM18/2,color='r',label='HalfMaximum of fit CO18')
-    #ax4.annotate(r'$FWHM18=$%0.3f'%(FWHM18),(x_p,1.5*y_p))
-    if (sd18<popt18).all():
-        ax4.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.25)
-    #ax4.plot(xx,s18f,label=r'Normalized $C^{18}O$ Spectra (Centered at $^{13}CO$ to cancel noise) ')
+    hline=np.linspace(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,10)
+    ax4.plot(hline,np.ones(hline.shape)*popt18[0]/2,color='r',label='HalfMaximum of fit CO18')
+    if (np.abs(sd18)<np.abs(popt18)).all():
+        ax4.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
     ax4.legend()
 
-    ax5=plt.subplot(gs[6,:])
+    ax5=plt.subplot(gs[9,:])
     ax5.set_title(r'$^{12}CO$ Wings')
-    #ax5.plot(xx[mask18],s12[mask18])
-    ax5.fill_between(xx[xx<popt18[1]-FWHM18/2],s12[xx<popt18[1]-FWHM18/2],alpha=0.7)
-    ax5.fill_between(xx[xx>popt18[1]+FWHM18/2],s12[xx>popt18[1]+FWHM18/2],alpha=0.7)
+    ax5.fill_between(xx[xx<popt13[1]-FWHM13/2],s12[xx<popt13[1]-FWHM13/2],alpha=0.7)
+    ax5.fill_between(xx[xx>popt13[1]+FWHM13/2],s12[xx>popt13[1]+FWHM13/2],alpha=0.7)
 
     plt.tight_layout()
