@@ -57,17 +57,30 @@ def denoise_map(m,rms):
     """
     return np.ma.masked_where(m<3.0*rms,m)
 
-def cube_to_max(cube):
+def cube_to_max(cube,option=1):
     """
     Input: A 3D Masked Cube_Map
+    Option 1: (X,Y)=(X-Pixels,Y-Pixels)
+    Option 2: (X,Y)=(Y-Pixels,Velocity)
+    Option 3: (X,Y)=(X-Pixels,Velocity)
     Return: Masked Maximum Intensity Map
     """
-    X=cube.shape[2]
-    Y=cube.shape[1]
+    xx=1 if option==2 else 2
+    yy=1 if option==1 else 0
+    X=cube.shape[xx]
+    Y=cube.shape[yy]
     mapmax=np.ma.masked_array(np.zeros((Y,X)),mask=np.ones((Y,X)))
     for y in range(Y):
         for x in range(X):
-            value = cube[:,y,x].max()
+            if (option==1):
+                value = cube[:,y,x].max()
+            elif  (option==2):
+                value = cube[y,x,:].max()
+            elif  (option==3):
+                value = cube[y,:,x].max()
+            else:
+                print 'Options Only (1,2,3)'
+                break
             if (value.dtype=='float32'):
                 mapmax[y,x]=value
     return mapmax
@@ -202,16 +215,31 @@ def Spectra(cube_map,y,x):
     """
     return cube_map[:,y,x]
 
+def Spectra9(cube_map,y,x):
+    """
+    Mean Spectrum of 3x3 Selected Coordinates
+    Input: Cube Map, pixel Coordinates
+    Return: Vector of Spectrum Values
+    """
+    a1,a2,a3=cube_map[:,y-1,x-1],cube_map[:,y-1,x],cube_map[:,y-1,x+1]
+    b1,b2,b3=cube_map[:,y,x-1],cube_map[:,y,x],cube_map[:,y,x+1]
+    c1,c2,c3=cube_map[:,y+1,x-1],cube_map[:,y+1,x],cube_map[:,y+1,x+1]
+
+    return np.mean( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 ),np.std( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 )
+
 
 def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
     """
     To use with IPython interact
     """
+
+    #===================================Fitting======================
+    gf=0.2 #gooud fit parameter ~10%
     xx=velocity
     #===========CO12=======================
     s12=Spectra(map12,y,x)
-    der1=np.diff(s12)
-    der2=np.diff(der1)
+    #----mask------
+    der2=np.diff(s12,2.) #Second Derivative
     m = np.ones(len(s12), dtype=bool)
     ind1=np.argsort(der2)[0]+1
     ind2=np.argsort(der2)[1]+1
@@ -219,30 +247,34 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
         ind2=np.argsort(der2)[2]+1
     m[ind1:ind2]=False
     m[ind2:ind1]=False
+    #---end of mask-----
     try:
         popt12, pcov12 = curve_fit(gaussian, xx[m], s12[m],p0=[s12.max(),xx[np.argmax(s12)],1.5],diag=(0.01,0.01))
     except:
         popt12,pcov12=np.ones((1,3)),np.ones((3,3))
-    sd12= np.sqrt(np.diag(pcov12))
-    FWHM12=2.355*np.abs(popt12[2])
-    FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu))
+    sd12= np.sqrt(np.diag(pcov12))      #Standard Deviation
+    fit12 = (sd12<gf*np.abs(popt12)).all() #Good Fit?
+    FWHM12=2.355*np.abs(popt12[2])      #Fitted Full Width Half Maximum
+    FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu)) #theoretical (thermal)
 
     #===========CO13=======================
     s13=Spectra(map13,y,x)
     popt13, pcov13 = curve_fit(gaussian, xx, s13,p0=[0.25*popt12[0],popt12[1],popt12[2]],diag=(0.01,0.01))
-    sd13= np.sqrt(np.diag(pcov13))
-    FWHM13=2.355*np.abs(popt13[2])
-    FWHM13t=0.00001*2.355*np.sqrt(k_b*Tx13[y,x]/(m_CO13*amu))
+    sd13= np.sqrt(np.diag(pcov13))      #Standard Deviation
+    fit13 = (sd13<gf*np.abs(popt13)).all() #Good Fit?
+    FWHM13=2.355*np.abs(popt13[2])      #Fitted Full Width Half Maximum
+    FWHM13t=0.00001*2.355*np.sqrt(k_b*Tx13[y,x]/(m_CO13*amu)) #theoretical (thermal)
 
     #===========CO18=======================
     s18=Spectra(map18,y,x)
-    #=========================================
     popt18, pcov18 = curve_fit(gaussian, xx, s18,p0=[0.25*popt13[0],popt13[1],popt13[2]],diag=(0.1,0.1))
-    sd18= np.sqrt(np.diag(pcov18))
-    FWHM18=2.355*np.abs(popt18[2])
-    FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu))
+    sd18= np.sqrt(np.diag(pcov18))      #Standard Deviation
+    fit18 = (sd18<gf*np.abs(popt18)).all() #Good Fit?
+    FWHM18=2.355*np.abs(popt18[2])      #Fitted Full Width Half Maximum
+    FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
-    #================Print==========
+
+    #================Print==============================================
     print 'tau12: %0.3f'%ta12[y,x]
     print 'tau13: %0.3f'%ta13[y,x]
     print '12CO Excitation Temperature: %0.2f'%Tx12[y,x]
@@ -254,36 +286,42 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
 
     #===========================================================================
     #===========PLOTS=======================
+    #===========================================================================
     #dy,dx,dv=20,20,10
-    vmax=np.argmax(s12)
+    vmax=np.argmax(s13)
     v1,v2=vmax-dv,vmax+dv
-    #===Map=======================
-    gs = gridspec.GridSpec(10, 7)
+
+    #===========================================
+    #===Map=====================================
+    gs = gridspec.GridSpec(12, 7)
     ax1=plt.subplot(gs[:4,2:])
-    #ax1.set_title('$^{12}CO$ Max Temperatures (Corrected)')
-    mim=ax1.imshow(map12m,origin='low',cmap='coolwarm')
+    ax1.set_title('$^{12}CO$ Excitation Temperatures')
+    #mim=ax1.imshow(map12m,origin='low',cmap='coolwarm')
+    mim=ax1.imshow(Tx12,origin='low',cmap='coolwarm')
     ax1.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
     ax1.annotate('$x$=%d'%x,(x+5,5),color='k',size=20)
     ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
     ax1.annotate('$y$=%d'%y,(5,y+5),color='k',size=20)
     cbar=plt.colorbar(mim,fraction=0.040, pad=0.04)
-    cbar.ax.set_ylabel('$^{12}CO$ Max Temperature $(K)$')
+    cbar.ax.set_ylabel('$^{12}CO$ $T_{X}$ $(K)$')
 
+    #===========================
     #==Zoom=======
     x1, x2, y1, y2 = x-dx, x+dx, y-dy, y+dy
     region12=map12m[y1:y2,x1:x2]
     region13=map13m[y1:y2,x1:x2]
-    if ((x>400) and (y>290)):
-        axins = zoomed_inset_axes(ax1, 6, loc=3) # zoom = 6
+    if ((x+dx>350) and (y+dy>250)):
+        axins = zoomed_inset_axes(ax1, 7, loc=3) # zoom = 6
     else:
-        axins = zoomed_inset_axes(ax1, 6, loc=1)
+        axins = zoomed_inset_axes(ax1, 7, loc=1)
+    #axins.set_title('$^{12}CO$ and $^{13}CO$ (contours) \n max$T_{B}$ $(K)$')
     c12=axins.contourf(map12m,levels=np.linspace(region12.min(),region12.max(),15))
     c13=axins.contour(map13m,cmap='gnuplot',levels=np.linspace(region13.min(),region13.max(),7),alpha=0.75)
     axins.set_xlim(x1, x2)
     axins.set_ylim(y1, y2)
     mark_inset(ax1, axins, loc1=2, loc2=3, fc="none", ec="1.",lw=2.)
 
-    axins.set_title('Max Temperature Contours:$^{13}CO$ \n Max Temperature Filled Contours:$^{12}CO$ ')
+    axins.set_title('Max $T_{B}$ Contours:$^{13}CO$ \n Max $T_{B}$ Filled Contours:$^{12}CO$ ')
     # axins12 = inset_axes(axins, width='2%', height='25%', loc=2)
     # cbar12=plt.colorbar(c12,cax=axins12)
     # cbar12.ax.set_title('$^{12}CO$ \n maxT $(K)$')
@@ -298,54 +336,88 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     axins.add_artist(rect1[0])
     rect2 = [Rectangle((x-dd,y-dy), width=2.*dd, height=2.*dy, fill=False,color='red',linewidth=1.2,alpha=0.75)]
     axins.add_artist(rect2[0])
+    rect3= [Rectangle((x-1.5,y-1.5), width=3, height=3, fill=False,color='green',linewidth=1.5,alpha=0.95)]
+    axins.add_artist(rect3[0])
 
+    #=================3D Velocities==================================================
+    #Parameters
+    hl_lw=3 #Highlight LineWidth
+    lev_18 = popt18[0]/2. #C18O Contour Display
+    lev_13 = popt13[0]/2.
+    min13=0.75
+    min12=0.
+    num_levels_12=10
+    num_levels_13=8
+    #step13=0.333
     #======X-line=========================
     ax1y=plt.subplot(gs[4:6,2:])
     ax1y.set_ylabel('Velocity $(km\,s^{-1})$')
     ax1y.set_xlabel('X-Pixel')
-    region13y=map13[v1:v2,y,x-dx:x+dx]
-    region12y=map12[v1:v2,y,x-dx:x+dx]
-    cy=ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,levels=np.linspace(np.abs(region13y.min())+2.5,region13y.max(),8),linewidths=2.,cmap='gnuplot',alpha=0.5)
-    c2y=ax1y.contourf(np.arange(x-dx,x+dx,1),velocity[v1:v2],region12y,levels=np.linspace(np.abs(region12y.min())+2.5,region12y.max(),10))
+    region13y=map13[v1:v2,y,x-dx:x+dx] #CO13 zoom region
+    region12y=map12[v1:v2,y,x-dx:x+dx] #CO12 zoom region
+    region18y=map18[v1:v2,y,x-dx:x+dx] #CO18 zoom region
+
+    lev13y = np.linspace(np.abs(region13y.min())+min13,region13y.max(),num_levels_13)
+    lev12y = np.linspace(min12,region12y.max(),num_levels_12)
+    lev18y=[lev_18]
+
+    cy=ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,levels=lev13y,linewidths=2.,cmap='gnuplot',alpha=0.5)
+    if fit13:
+        ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,[lev_13],linewidths=hl_lw,colors='red',alpha=1.)
+    c2y=ax1y.contourf(np.arange(x-dx,x+dx,1),velocity[v1:v2],region12y,levels=lev12y)
+    if fit18:
+        ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,lev18y,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.7)
+
     ax1y.plot(np.ones(velocity[v1:v2].shape)*x,velocity[v1:v2],'--')
 
     #===CO12 Colorbar Hacks======================================
-    axinsy12 = inset_axes(ax1y, width='40%', height='3%', loc=2)
+    axinsy12 = inset_axes(ax1y, width='35%', height='3%', loc=2)
     cbary12=plt.colorbar(c2y,cax=axinsy12,orientation='horizontal')
-    cbary12.ax.set_title(r'$^{12}CO$ Temperature $(K)$')
+    cbary12.ax.set_title('$^{12}CO$ $T_{B}$ $(K)$')
 
     #===CO13 Colorbar Hacks======================================
-    axinsy13 = inset_axes(ax1y, width='35%', height='3%', loc=1)
+    axinsy13 = inset_axes(ax1y, width='30%', height='3%', loc=1)
     cbary13=plt.colorbar(cy,cax=axinsy13,orientation='horizontal')
-    cbary13.ax.set_title(r'$^{13}CO$ Temperature $(K)$')
+    cbary13.ax.set_title('$^{13}CO$ $T_{B}$ $(K)$')
 
-    #==========Y-line=====================
+    #==========Y-line===============================================================
     ax1x=plt.subplot(gs[:4,:2])
     ax1x.set_xlabel('Velocity $(km\,s^{-1})$')
     ax1x.set_ylabel('Y-Pixel')
     region13x=map13[v1:v2,y-dy:y+dy,x]
     region12x=map12[v1:v2,y-dy:y+dy,x]
-    cx=ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),levels=np.linspace(np.abs(region13x.min())+2.5,region13x.max(),8),linewidths=2.,cmap='gnuplot',alpha=0.5)
-    c2x=ax1x.contourf(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region12x),levels=np.linspace(np.abs(region12x.min())+2.5,region12x.max(),10))
+    region18x=map18[v1:v2,y-dy:y+dy,x]
+
+    lev13x = np.linspace(np.abs(region13x.min())+min13,region13x.max(),num_levels_13)
+    lev12x = np.linspace(min12,region12x.max(),num_levels_12)
+    lev18x=[lev_18]
+
+    cx=ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),levels=lev13x,linewidths=2.,cmap='gnuplot',alpha=0.5)
+    if fit13:
+        ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),[lev_13],linewidths=hl_lw,colors='red',alpha=1.)
+    c2x=ax1x.contourf(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region12x),levels=lev12x)
+    if fit18:
+        ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region18x),lev18x,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.8)
     ax1x.plot(velocity[v1:v2],np.ones(velocity[v1:v2].shape)*y,'--')
-    #axins = zoomed_inset_axes(ax, 6, loc=1)
 
     #===CO12 Colorbar Hacks======================================
-    axinsx12 = inset_axes(ax1x, width='3%', height='35%', loc=2)
+    axinsx12 = inset_axes(ax1x, width='3%', height='30%', loc=2)
     cbarx12=plt.colorbar(c2x,cax=axinsx12)
-    cbarx12.ax.set_title('$^{12}CO$ \n Temperature $(K)$')
+    cbarx12.ax.set_title('$^{12}CO$ \n  $T_{B}$ $(K)$')
 
     #===CO13 Colorbar Hacks======================================
     axinsx13 = inset_axes(ax1x, width='3%', height='30%', loc=1)
     cbarx13=plt.colorbar(cx,cax=axinsx13)
-    cbarx13.ax.set_title('$^{13}CO$ \n Temperature $(K)$')
+    cbarx13.ax.set_title('$^{13}CO$ \n $T_{B}$ $(K)$')
     axinsx13.yaxis.set_ticks_position("left")
 
-    x_p=xx.min()
+    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #============================================================================
+    x_p=xx.min() #For Text Annotation
 
     ax2=plt.subplot(gs[6,:])
     y_p=s12.max()
-    ax2.set_title(r'$^{12}CO$ // $FWHM=$%0.3f'%(FWHM12))
+    ax2.set_title('$^{12}CO$ // $FWHM=$%0.3f'%(FWHM12))
     ax2.plot(xx,s12,label='CO12')
     ax2.plot(xx[m],s12[m],'ko',label='Masked CO12 Data')
     ax2.plot(xx,gaussian(xx,popt12[0],popt12[1],popt12[2]),label='Fit to Masked Data')
@@ -356,15 +428,15 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     ax2.plot(hline,np.ones(hline.shape)*popt12[0]/2,color='r',label='HalfMaximum of fit CO12')
     ax2.plot(xx,s13,alpha=0.7,label='CO13')
     ax2.plot(xx,s18,alpha=0.5,label='C18O')
-    if (np.abs(sd18)<np.abs(popt18)).all():
+    if fit18:
         ax2.axvspan(popt18[1]-FWHM18/2.,popt18[1]+FWHM18/2.,alpha=0.15)
-    if (np.abs(sd13)<np.abs(popt13)).all():
+    if fit13:
         ax2.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax2.legend()
 
     ax3=plt.subplot(gs[7,:])
     y_p=s13.max()
-    ax3.set_title(r'$^{13}CO$ // $FWHM=$%0.3f'%(FWHM13))
+    ax3.set_title('$^{13}CO$ // $FWHM=$%0.3f'%(FWHM13))
     ax3.plot(xx,s13,'ko',label='CO13')
     ax3.plot(xx,gaussian(xx,popt13[0],popt13[1],popt13[2]),label='Fit to CO13')
     if (np.abs(sd13)<np.abs(popt13)).all():
@@ -373,9 +445,9 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     hline=np.linspace(popt13[1]-FWHM13/2,popt13[1]+FWHM13/2,10)
     ax3.plot(hline,np.ones(hline.shape)*popt13[0]/2,color='r',label='HalfMaximum of fit CO13')
     ax3.plot(xx,s18,alpha=0.5,label='C18O')
-    if (np.abs(sd18)<np.abs(popt18)).all():
+    if fit18:
         ax3.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
-    if (np.abs(sd13)<np.abs(popt13)).all():
+    if fit13:
         ax3.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax3.legend()
 
@@ -389,7 +461,7 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     ax4.annotate(r'Fit Parameters for CO18: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt18[0],sd18[0],popt18[1],sd18[1],popt18[2],sd18[2]),(x_p,y_p))
     hline=np.linspace(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,10)
     ax4.plot(hline,np.ones(hline.shape)*popt18[0]/2,color='r',label='HalfMaximum of fit CO18')
-    if (np.abs(sd18)<np.abs(popt18)).all():
+    if fit18:
         ax4.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
     ax4.legend()
 
@@ -397,5 +469,18 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     ax5.set_title(r'$^{12}CO$ Wings')
     ax5.fill_between(xx[xx<popt13[1]-FWHM13/2],s12[xx<popt13[1]-FWHM13/2],alpha=0.7)
     ax5.fill_between(xx[xx>popt13[1]+FWHM13/2],s12[xx>popt13[1]+FWHM13/2],alpha=0.7)
+
+    ax6=plt.subplot(gs[10:,:])
+    ax6.set_title('3X3 Mean and Standard Deviation Spectrum')
+    ave12=Spectra9(map12,y,x)
+    ave13=Spectra9(map13,y,x)
+    ave18=Spectra9(map18,y,x)
+    ax6.plot(xx,ave12[0],color='blue',label='CO12 Mean')
+    ax6.fill_between(xx,ave12[0]-ave12[1],ave12[0]+ave12[1],color='blue',alpha=0.25)
+    ax6.plot(xx,ave13[0],color='green',label='CO12 Mean')
+    ax6.fill_between(xx,ave13[0]-ave13[1],ave13[0]+ave13[1],color='green',alpha=0.25)
+    ax6.plot(xx,ave18[0],color='red',label='CO12 Mean')
+    ax6.fill_between(xx,ave18[0]-ave18[1],ave18[0]+ave18[1],color='red',alpha=0.25)
+    ax6.legend()
 
     plt.tight_layout()
