@@ -228,7 +228,7 @@ def Spectra9(cube_map,y,x):
     return np.mean( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 ),np.std( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 )
 
 
-def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
+def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
     """
     To use with IPython interact
     """
@@ -293,27 +293,43 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
 
     #===========================================
     #===Map=====================================
-    gs = gridspec.GridSpec(12, 7)
-    ax1=plt.subplot(gs[:4,2:])
+    gs = gridspec.GridSpec(13, 8)
+
+    ax1=plt.subplot(gs[1:5,2:7])    #Axis for Main Map
     ax1.set_title('$^{12}CO$ Excitation Temperatures')
     #mim=ax1.imshow(map12m,origin='low',cmap='coolwarm')
-    mim=ax1.imshow(Tx12,origin='low',cmap='coolwarm')
-    ax1.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
+    mim=ax1.imshow(Tx12,origin='low',cmap='coolwarm')       #Excitation Map
+    ax1.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.6) #Current X
     ax1.annotate('$x$=%d'%x,(x+5,5),color='k',size=20)
-    ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.5)
+    ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.6)  #Current Y
     ax1.annotate('$y$=%d'%y,(5,y+5),color='k',size=20)
-    cbar=plt.colorbar(mim,fraction=0.040, pad=0.04)
-    cbar.ax.set_ylabel('$^{12}CO$ $T_{X}$ $(K)$')
+    ax1bar = inset_axes(ax1, width='2%', height='40%', loc=4)   #axis for colorbar
+    plt.colorbar(mim,cax=ax1bar)        #colorbar
+
+    #=====================================
+    axv0=plt.subplot(gs[0,2:7],sharex=ax1) #Axis for (X,Velocity) Map
+    axv0.set_title('$^{12}CO$ Max $T_{B}$')
+    lev=np.linspace(0,map12mx.max(),20)     #Contourf Levels
+    mimx=axv0.contourf(np.arange(0,map12mx.shape[1]),velocity,map12mx,levels=lev,cmap='coolwarm')
+    axv0.xaxis.tick_top()
+    axv0.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.75) #Current X
+
+    axv1=plt.subplot(gs[1:5,7],sharey=ax1)  #Axis for (X,Velocity) Map
+    axv1.set_title('$^{12}CO$ Max $T_{B}$')
+    lev=np.linspace(0,map12my.max(),20)     #Contourf Levels
+    mimx=axv1.contourf(velocity,np.arange(0,map12my.shape[1]),np.rot90(map12my,3),levels=lev,cmap='coolwarm')
+    axv1.yaxis.tick_right()
+    axv1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.75) #Current Y
 
     #===========================
     #==Zoom=======
-    x1, x2, y1, y2 = x-dx, x+dx, y-dy, y+dy
+    x1, x2, y1, y2 = x-dx, x+dx, y-dy, y+dy     #Define Region
     region12=map12m[y1:y2,x1:x2]
     region13=map13m[y1:y2,x1:x2]
-    if ((x+dx>350) and (y+dy>250)):
-        axins = zoomed_inset_axes(ax1, 7, loc=3) # zoom = 6
+    if ((x+dx>350) and (y+dy>250)):     #dx=20, 7
+        axins = zoomed_inset_axes(ax1, 140./np.max([dx,dy]), loc=3) #Axis for Zoom
     else:
-        axins = zoomed_inset_axes(ax1, 7, loc=1)
+        axins = zoomed_inset_axes(ax1, 140./np.max([dx,dy]), loc=1) #Axis for Zoom
     #axins.set_title('$^{12}CO$ and $^{13}CO$ (contours) \n max$T_{B}$ $(K)$')
     c12=axins.contourf(map12m,levels=np.linspace(region12.min(),region12.max(),15))
     c13=axins.contour(map13m,cmap='gnuplot',levels=np.linspace(region13.min(),region13.max(),7),alpha=0.75)
@@ -343,14 +359,13 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     #Parameters
     hl_lw=3 #Highlight LineWidth
     lev_18 = popt18[0]/2. #C18O Contour Display
-    lev_13 = popt13[0]/2.
+    lev_13 = popt13[0]/2. #CO13 Contour Display
     min13=0.75
     min12=0.
     num_levels_12=10
     num_levels_13=8
-    #step13=0.333
     #======X-line=========================
-    ax1y=plt.subplot(gs[4:6,2:])
+    ax1y=plt.subplot(gs[5:7,2:])
     ax1y.set_ylabel('Velocity $(km\,s^{-1})$')
     ax1y.set_xlabel('X-Pixel')
     region13y=map13[v1:v2,y,x-dx:x+dx] #CO13 zoom region
@@ -361,12 +376,12 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     lev12y = np.linspace(min12,region12y.max(),num_levels_12)
     lev18y=[lev_18]
 
-    cy=ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,levels=lev13y,linewidths=2.,cmap='gnuplot',alpha=0.5)
+    cy=ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,levels=lev13y,linewidths=2.,cmap='gnuplot',alpha=0.75)
     if fit13:
         ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region13y,[lev_13],linewidths=hl_lw,colors='red',alpha=1.)
     c2y=ax1y.contourf(np.arange(x-dx,x+dx,1),velocity[v1:v2],region12y,levels=lev12y)
     if fit18:
-        ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,lev18y,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.7)
+        ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,lev18y,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.8)
 
     ax1y.plot(np.ones(velocity[v1:v2].shape)*x,velocity[v1:v2],'--')
 
@@ -381,7 +396,7 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     cbary13.ax.set_title('$^{13}CO$ $T_{B}$ $(K)$')
 
     #==========Y-line===============================================================
-    ax1x=plt.subplot(gs[:4,:2])
+    ax1x=plt.subplot(gs[1:5,:2])
     ax1x.set_xlabel('Velocity $(km\,s^{-1})$')
     ax1x.set_ylabel('Y-Pixel')
     region13x=map13[v1:v2,y-dy:y+dy,x]
@@ -392,12 +407,12 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     lev12x = np.linspace(min12,region12x.max(),num_levels_12)
     lev18x=[lev_18]
 
-    cx=ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),levels=lev13x,linewidths=2.,cmap='gnuplot',alpha=0.5)
+    cx=ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region13x,3),levels=lev13x,linewidths=2.,cmap='gnuplot',alpha=0.75)
     if fit13:
-        ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region13x),[lev_13],linewidths=hl_lw,colors='red',alpha=1.)
-    c2x=ax1x.contourf(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region12x),levels=lev12x)
+        ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region13x,3),[lev_13],linewidths=hl_lw,colors='red',alpha=1.)
+    c2x=ax1x.contourf(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region12x,3),levels=lev12x)
     if fit18:
-        ax1x.contour(velocity[v1:v2],np.arange(y+dy,y-dy,-1),np.rot90(region18x),lev18x,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.8)
+        ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region18x,3),lev18x,linestyles='--',linewidths=hl_lw,colors='red',alpha=0.8)
     ax1x.plot(velocity[v1:v2],np.ones(velocity[v1:v2].shape)*y,'--')
 
     #===CO12 Colorbar Hacks======================================
@@ -415,7 +430,7 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
     #============================================================================
     x_p=xx.min() #For Text Annotation
 
-    ax2=plt.subplot(gs[6,:])
+    ax2=plt.subplot(gs[7,:])
     y_p=s12.max()
     ax2.set_title('$^{12}CO$ // $FWHM=$%0.3f'%(FWHM12))
     ax2.plot(xx,s12,label='CO12')
@@ -434,7 +449,7 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
         ax2.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax2.legend()
 
-    ax3=plt.subplot(gs[7,:])
+    ax3=plt.subplot(gs[8,:],sharex=ax2)
     y_p=s13.max()
     ax3.set_title('$^{13}CO$ // $FWHM=$%0.3f'%(FWHM13))
     ax3.plot(xx,s13,'ko',label='CO13')
@@ -451,7 +466,7 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
         ax3.axvspan(popt13[1]-FWHM13/2.,popt13[1]+FWHM13/2.,alpha=0.15,color='green')
     ax3.legend()
 
-    ax4=plt.subplot(gs[8,:])
+    ax4=plt.subplot(gs[9,:],sharex=ax2)
     y_p=s18.max()
     ax4.set_title(r'$C^{18}O$ // $FWHM=$%0.3f'%(FWHM18))
     ax4.plot(xx,s18,'ko',label='C18O')
@@ -465,12 +480,12 @@ def map_showXY(map12,map12m,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,
         ax4.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
     ax4.legend()
 
-    ax5=plt.subplot(gs[9,:])
+    ax5=plt.subplot(gs[10,:],sharex=ax2)
     ax5.set_title(r'$^{12}CO$ Wings')
     ax5.fill_between(xx[xx<popt13[1]-FWHM13/2],s12[xx<popt13[1]-FWHM13/2],alpha=0.7)
     ax5.fill_between(xx[xx>popt13[1]+FWHM13/2],s12[xx>popt13[1]+FWHM13/2],alpha=0.7)
 
-    ax6=plt.subplot(gs[10:,:])
+    ax6=plt.subplot(gs[11:,:],sharex=ax2)
     ax6.set_title('3X3 Mean and Standard Deviation Spectrum')
     ave12=Spectra9(map12,y,x)
     ave13=Spectra9(map13,y,x)
