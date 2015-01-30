@@ -99,6 +99,11 @@ def plot_map(image,coords,title='title',cm ='RdPu'):
     ax1.set_title(title)
     plt.colorbar(im)
 
+def save_to_fits(image,coords,filename):
+    wheader=coords.to_header()
+    hdu=fits.PrimaryHDU(data=image,header=wheader)
+    hdu.writeto(filename)
+
 def plot_maps(coords,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
     """
     Usage: plot_maps(maps=[list_of_maps],titles=[list_of_titles],norm='log',fs=figsize,coords=wcs,cm=colormap)
@@ -218,14 +223,14 @@ def Spectra9(cube_map,y,x):
     """
     Mean Spectrum of 3x3 Selected Coordinates
     Input: Cube Map, pixel Coordinates
-    Return: Vector of Spectrum Values
+    Return: Mean Spectrum, Standard Deviation Spectrum
     """
-    a1,a2,a3=cube_map[:,y-1,x-1],cube_map[:,y-1,x],cube_map[:,y-1,x+1]
-    b1,b2,b3=cube_map[:,y,x-1],cube_map[:,y,x],cube_map[:,y,x+1]
-    c1,c2,c3=cube_map[:,y+1,x-1],cube_map[:,y+1,x],cube_map[:,y+1,x+1]
-
-    return np.mean( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 ),np.std( np.array([a1,a2,a3,b1,b2,b3,c1,c2,c3]), axis=0 )
-
+    a=[]
+    for j in [y-1,y,y+1]:
+        for i in [x-1,x,x+1]:
+            a.append(np.nan_to_num(cube_map[:,j,i]))
+    a=np.array(a)
+    return np.mean(a, axis=0),np.std(a, axis=0)
 
 def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
     """
@@ -259,7 +264,11 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     fit12 = (sd12<gf*np.abs(popt12)).all() #Good Fit?
     FWHM12=2.355*np.abs(popt12[2])      #Fitted Full Width Half Maximum
     FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu)) #theoretical (thermal)
-
+    ########################################
+    s912=Spectra9(map12,y,x)[0]
+    popt912, pcov912 = curve_fit(gaussian, xx, s912,p0=[s912.max(),xx[np.argmax(s12)],1.5],diag=(0.01,0.01))
+    sd912= np.sqrt(np.diag(pcov912))
+    print popt912,sd912,(sd912<gf*np.abs(popt912)).all()
     #===========CO13=======================
     s13=Spectra(map13,y,x)
     try:
@@ -270,7 +279,11 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     fit13 = (sd13<gf*np.abs(popt13)).all() #Good Fit?
     FWHM13=2.355*np.abs(popt13[2])      #Fitted Full Width Half Maximum
     FWHM13t=0.00001*2.355*np.sqrt(k_b*Tx13[y,x]/(m_CO13*amu)) #theoretical (thermal)
-
+########################################################
+    s913=Spectra9(map13,y,x)[0]
+    popt913, pcov913 = curve_fit(gaussian, xx, s913,p0=[0.25*popt912[0],popt912[1],popt912[2]],diag=(0.1,0.1))
+    sd913= np.sqrt(np.diag(pcov913))
+    print popt913,sd913,(sd913<gf*np.abs(popt913)).all()
     #===========CO18=======================
     s18=Spectra(map18,y,x)
     try:
@@ -282,6 +295,10 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     FWHM18=2.355*np.abs(popt18[2])      #Fitted Full Width Half Maximum
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
+
+    print popt12,sd12,fit12
+    print popt13,sd13,fit13
+    print popt18,sd18,fit18
     #================TABLE========================================
     col1=[r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$','$C^{18}O$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral']
     i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum()) if fit13 else np.nan
@@ -515,6 +532,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax6.fill_between(xx,ave13[0]-ave13[1],ave13[0]+ave13[1],color='green',alpha=0.25)
     ax6.plot(xx,ave18[0],color='red',label='CO12 Mean')
     ax6.fill_between(xx,ave18[0]-ave18[1],ave18[0]+ave18[1],color='red',alpha=0.25)
+    ax6.plot(xx,gaussian(xx,popt913[0],popt913[1],popt913[2]),'--',linewidth=3.,label='Fit')
     ax6.legend()
 
     plt.tight_layout()
