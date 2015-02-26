@@ -11,9 +11,25 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes,zoomed_inset_axes,m
 from scipy.optimize import curve_fit
 from IPython.display import clear_output, display, HTML
 
-ab12CO = 77.0
-ab13CO = 8.0
+#===================Constants==================================================
+ab12CO=77.        ##Abundancy ratio of 12co to 13co (Schoier et al. 2002 )
+ab13CO=8.         ##Abundancy ratio of 13co to c18o (Schoier et al. 2002)
+ab12CO_H2=8.5e-5     ##Abundancy ratio of 12CO to H2 (Frerking et al. 1982)
+ab13CO_H2=1.25e-6    ##Abundancy ratio of 13CO to H2 (Moore et al. 2007)
+ab18CO_H2=1.7e-7     ##Abundancy ratio of C18O to H2 (Frerking et al. 1982)
 hk=0.0479924335     #* 10e9
+h=6.626e-34         ##(J*s) Planck's const
+k=1.381e-23         ##(J/K) Boltzman const
+eo=8.85e-12         ##(F/m) permitivity const
+Tbg=2.7             ##(K)   Background Temp
+c=3.e8              ##(m/s) speed of light
+Msol=1.98892e30     ##(kg)  Solar mass in kg
+mH=1.67e-27         ##atomic hydrogen mass in kg
+mH2=2*mH            ##(kg) mass of H2 in kg
+mmw=2.33            ##mean mol weight wrt no of Hydrogen mols
+SQARSCTSR=206265.**2 ##no of stradians in arcsec squared
+dp=0.112*3.3365e30  ##(C*m) CO dipole moment (0.112 debye)
+pac=3.08568e16      ##(m) one parsec in metres
 v_co12_j32=345.796  #GHz
 v_co13_j32=330.5879 #GHz
 v_c18o_j32=329.331  #GHz
@@ -23,6 +39,7 @@ m_C18O=29.999 #atomic units
 amu=1.66e-24 #g
 k_b=1.38e-16 #erg/K
 
+vres=0.013663646229508
 velocity=np.array([-20.06933116, -20.90281358, -21.736296  , -22.56977842,
        -23.40326084, -24.23674326, -25.07022567, -25.90370809,
        -26.73719051, -27.57067293, -28.40415535, -29.23763777,
@@ -39,6 +56,7 @@ velocity=np.array([-20.06933116, -20.90281358, -21.736296  , -22.56977842,
        -63.41041695, -64.24389937, -65.07738179, -65.9108642 ,
        -66.74434662, -67.57782904, -68.41131146, -69.24479388, -70.0782763 ])
 
+#==============================================================================
 def open_map(fits_file):
     """
     Usage: Pixel_map, Wcs_Coords = open_map('fits_file')
@@ -106,7 +124,7 @@ def save_to_fits(image,coords,filename):
 
 def plot_maps(coords,fn,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
     """
-    Usage: plot_maps(maps=[list_of_maps],titles=[list_of_titles],fn=filename,norm='log',fs=figsize,coords=wcs,cm=colormap)
+    Usage: plot_maps(maps=[list_of_maps],titles=[list_of_titles],fn=filename(put f for not saving),norm='log',fs=figsize,coords=wcs,cm=colormap)
     Input: 2D pixel Maps, WCS object of the Maps
     Output: Plot all Subplots of The Images with WCS Compass
     """
@@ -126,7 +144,8 @@ def plot_maps(coords,fn,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
         ains = inset_axes(a[i], width='2%', height='37%', loc=1)
         cb=plt.colorbar(im,cax=ains)
         plt.tight_layout()
-        plt.savefig(fn,bbox_inches='tight')
+        if (fn !='f'):
+            plt.savefig(fn,bbox_inches='tight')
 
 def initial_est(map_thick,map_thin,abundance):
     """
@@ -266,10 +285,9 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     FWHM12=2.355*np.abs(popt12[2])      #Fitted Full Width Half Maximum
     FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu)) #theoretical (thermal)
     ########################################
-    s912=Spectra9(map12,y,x)[0]
-    popt912, pcov912 = curve_fit(gaussian, xx, s912,p0=[s912.max(),xx[np.argmax(s12)],1.5],diag=(0.01,0.01))
-    sd912= np.sqrt(np.diag(pcov912))
-    print popt912,sd912,(sd912<gf*np.abs(popt912)).all()
+    # s912=Spectra9(map12,y,x)[0]
+    # popt912, pcov912 = curve_fit(gaussian, xx, s912,p0=[s912.max(),xx[np.argmax(s12)],1.5],diag=(0.01,0.01))
+    # sd912= np.sqrt(np.diag(pcov912))
     #===========CO13=======================
     s13=Spectra(map13,y,x)
     try:
@@ -281,10 +299,9 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     FWHM13=2.355*np.abs(popt13[2])      #Fitted Full Width Half Maximum
     FWHM13t=0.00001*2.355*np.sqrt(k_b*Tx13[y,x]/(m_CO13*amu)) #theoretical (thermal)
 ########################################################
-    s913=Spectra9(map13,y,x)[0]
-    popt913, pcov913 = curve_fit(gaussian, xx, s913,p0=[0.25*popt912[0],popt912[1],popt912[2]],diag=(0.1,0.1))
-    sd913= np.sqrt(np.diag(pcov913))
-    print popt913,sd913,(sd913<gf*np.abs(popt913)).all()
+    # s913=Spectra9(map13,y,x)[0]
+    # popt913, pcov913 = curve_fit(gaussian, xx, s913,p0=[0.25*popt912[0],popt912[1],popt912[2]],diag=(0.1,0.1))
+    # sd913= np.sqrt(np.diag(pcov913))
     #===========CO18=======================
     s18=Spectra(map18,y,x)
     try:
@@ -296,17 +313,14 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     FWHM18=2.355*np.abs(popt18[2])      #Fitted Full Width Half Maximum
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
-
-    print popt12,sd12,fit12
-    print popt13,sd13,fit13
-    print popt18,sd18,fit18
     #================TABLE========================================
     col1=[r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$','$C^{18}O$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral']
-    i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum()) if fit13 else np.nan
-    col2=np.array(['%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f K'%Tx18[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f K'%i12])
+    i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
+    col2=np.array(['%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f K'%Tx18[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12])
     col3=np.array(['','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,''])
     t=Table([col1,col2,col3],names=('Name','Value','Theoretical'),meta={'name': 'first table'})
     display(t)
+    #t.write('test.tex',format='latex')
 
     #================Print==============================================
     # print 'tau12: %0.3f'%ta12[y,x]
@@ -331,10 +345,11 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     #===Map=====================================
     gs = gridspec.GridSpec(13, 8)
 
+    #====ax1-Main Map===============================
     ax1=plt.subplot(gs[1:5,2:7])    #Axis for Main Map
     ax1.set_title('$^{12}CO$ Excitation Temperatures')
     #mim=ax1.imshow(map12m,origin='low',cmap='coolwarm')
-    mim=ax1.imshow(Tx12,origin='low',cmap='coolwarm')       #Excitation Map
+    mim=ax1.imshow(Tx12.data,origin='low',cmap='coolwarm')       #Excitation Map
     ax1.axvline(x=x,color='k',ls='dashed',linewidth=1.0,alpha=0.6) #Current X
     ax1.annotate('$x$=%d'%x,(x+5,5),color='k',size=20)
     ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.6)  #Current Y
@@ -344,7 +359,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
 
     #=====================================
     axv0=plt.subplot(gs[0,2:7],sharex=ax1) #Axis for (X,Velocity) Map
-    axv0.set_title('$^{12}CO$ Max $T_{B}$')
+    axv0.set_title('              $^{12}CO$ Max $T_{B}$')
     lev=np.linspace(0,map12mx.max(),20)     #Contourf Levels
     mimx=axv0.contourf(np.arange(0,map12mx.shape[1]),velocity,map12mx,levels=lev,cmap='coolwarm')
     axv0.xaxis.tick_top()
@@ -533,7 +548,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax6.fill_between(xx,ave13[0]-ave13[1],ave13[0]+ave13[1],color='green',alpha=0.25)
     ax6.plot(xx,ave18[0],color='red',label='CO12 Mean')
     ax6.fill_between(xx,ave18[0]-ave18[1],ave18[0]+ave18[1],color='red',alpha=0.25)
-    ax6.plot(xx,gaussian(xx,popt913[0],popt913[1],popt913[2]),'--',linewidth=3.,label='Fit')
+    # ax6.plot(xx,gaussian(xx,popt913[0],popt913[1],popt913[2]),'--',linewidth=3.,label='Fit')
     ax6.legend()
 
     plt.tight_layout()
