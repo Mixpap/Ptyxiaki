@@ -104,9 +104,9 @@ def save_to_fits(image,coords,filename):
     hdu=fits.PrimaryHDU(data=image,header=wheader)
     hdu.writeto(filename)
 
-def plot_maps(coords,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
+def plot_maps(coords,fn,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
     """
-    Usage: plot_maps(maps=[list_of_maps],titles=[list_of_titles],norm='log',fs=figsize,coords=wcs,cm=colormap)
+    Usage: plot_maps(maps=[list_of_maps],titles=[list_of_titles],fn=filename,norm='log',fs=figsize,coords=wcs,cm=colormap)
     Input: 2D pixel Maps, WCS object of the Maps
     Output: Plot all Subplots of The Images with WCS Compass
     """
@@ -126,6 +126,7 @@ def plot_maps(coords,cm='coolwarm',norm='log',fs=(20,10),**kwargs):
         ains = inset_axes(a[i], width='2%', height='37%', loc=1)
         cb=plt.colorbar(im,cax=ains)
         plt.tight_layout()
+        plt.savefig(fn,bbox_inches='tight')
 
 def initial_est(map_thick,map_thin,abundance):
     """
