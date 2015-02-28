@@ -252,13 +252,39 @@ def Spectra9(cube_map,y,x):
     a=np.array(a)
     return np.mean(a, axis=0),np.std(a, axis=0)
 
-def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv):
+def MassEst(od,TR,Tex,d,res,j,i,X,fco):
+    """
+    od=optical depth
+    TR=Integral
+    Tex=Excitation Temp
+    d=distance in kpc
+    res=pixel resolution
+    j,i=line
+    X=CO to H2 abundance
+    fco=frequency of line in Hz
+    MG=MassEst(tau12_f,Integral12_fix,Tx12,d=2.,res=7.7,j=3,i=2,X=functions.ab12CO_H2,fco=functions.v_co12_j32*1e9)
+    """
+    dist=d*1e3*pac                         ##distance to the cloud in metres
+    sq_pxsz=(res**2)*SQARSCTSR            ##squared pixel size in steradian
+    ODcor=od/(1-np.exp(-od))               ##Optical depth correction
+    """****************************************
+     Set the Nij equation terms (result in m^-2)
+    ****************************************"""
+    term1=1.49*1e25                            ##
+    term2=0.364*(Tex+0.922)                    ## the partition function Z
+    term3=2.765*1e-9*(i*(i+1))                 ## h*vio/k
+    term4=4.798*1e-11                          ## h/k
+    Nco=(term1/(fco*j))*term2*np.exp(term3/Tex)*(1-np.exp(-term4*fco/Tex))*((1/(np.exp(term4*fco/Tex)-1))-(1/(np.exp(term4*fco/Tbg)-1)))**(-1)*ODcor*1e3*TR  ##should be in cm^-2
+    MGas=1.13*(1E-4)*(1E-6)*2.8*mH2*dist*dist*sq_pxsz*X*Nco/Msol
+    return MGas
+
+def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv,gf):
     """
     To use with IPython interact
     """
 
     #===================================Fitting======================
-    gf=0.2 #gooud fit parameter ~10%
+    #gf=0.2 #gooud fit parameter ~10%
     index_deviation=[10,2] #Max and Min Index Deviation for Second Derivative Mask
     xx=velocity
     #===========CO12=======================
@@ -291,7 +317,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     #===========CO13=======================
     s13=Spectra(map13,y,x)
     try:
-        popt13, pcov13 = curve_fit(gaussian, xx, s13,p0=[0.25*popt12[0],popt12[1],popt12[2]],diag=(0.01,0.01))
+        popt13, pcov13 = curve_fit(gaussian, xx, s13,p0=[0.25*popt12[0],popt12[1],popt12[2]],diag=(0.005,0.005))
     except:
         popt13,pcov13=np.zeros((3)),np.zeros((3,3))
     sd13= np.sqrt(np.diag(pcov13))      #Standard Deviation
@@ -305,7 +331,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     #===========CO18=======================
     s18=Spectra(map18,y,x)
     try:
-        popt18, pcov18 = curve_fit(gaussian, xx, s18,p0=[0.25*popt13[0],popt13[1],popt13[2]],diag=(0.1,0.1))
+        popt18, pcov18 = curve_fit(gaussian, xx, s18,p0=[0.25*popt13[0],popt13[1],popt13[2]],diag=(0.001,0.001))
     except:
         popt18,pcov18=np.zeros((3)),np.zeros((3,3))
     sd18= np.sqrt(np.diag(pcov18))      #Standard Deviation
@@ -314,10 +340,18 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
     #================TABLE========================================
-    col1=[r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$','$C^{18}O$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral']
+    # col1=[r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$','$C^{18}O$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
+    # i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
+    # MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
+    # col2=np.array(['%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f K'%Tx18[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12,'%0.2f $M_{\odot}$'%MG])
+    # col3=np.array(['','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,'',''])
+    # t=Table([col1,col2,col3],names=('Name','Value','Theoretical'),meta={'name': 'first table'})
+    # display(t)
+    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
     i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
-    col2=np.array(['%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f K'%Tx18[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12])
-    col3=np.array(['','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,''])
+    MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
+    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12,'%0.2f $M_{\odot}$'%MG])
+    col3=np.array(['','','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,'',''])
     t=Table([col1,col2,col3],names=('Name','Value','Theoretical'),meta={'name': 'first table'})
     display(t)
     #t.write('test.tex',format='latex')
@@ -343,7 +377,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
 
     #===========================================
     #===Map=====================================
-    gs = gridspec.GridSpec(13, 8)
+    gs = gridspec.GridSpec(12, 8)
 
     #====ax1-Main Map===============================
     ax1=plt.subplot(gs[1:5,2:7])    #Axis for Main Map
@@ -355,6 +389,8 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax1.axhline(y=y,color='k',ls='dashed',linewidth=1.0,alpha=0.6)  #Current Y
     ax1.annotate('$y$=%d'%y,(5,y+5),color='k',size=20)
     ax1bar = inset_axes(ax1, width='2%', height='40%', loc=4)   #axis for colorbar
+    ax1.annotate(s='', xy=(530,40), xytext=(579,40), arrowprops={'arrowstyle':'|-|','linewidth':2.0})
+    ax1.text(542,43,'3 pc',color='white',fontsize=15)
     plt.colorbar(mim,cax=ax1bar)        #colorbar
 
     #=====================================
@@ -433,7 +469,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     c2y=ax1y.contourf(np.arange(x-dx,x+dx,1),velocity[v1:v2],region12y,levels=lev12y)
     if fit18:
         ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,lev18y,linestyles='--',linewidths=hl_lw,colors='black',alpha=0.8)
-    ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,[s18.max()*0.8],linewidths=hl_lw+1,colors='black',alpha=0.8)
+        ax1y.contour(np.arange(x-dx,x+dx,1),velocity[v1:v2],region18y,[s18.max()*0.8],linewidths=hl_lw+1,colors='black',alpha=0.8)
 
     ax1y.plot(np.ones(velocity[v1:v2].shape)*x,velocity[v1:v2],'--')
 
@@ -465,7 +501,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     c2x=ax1x.contourf(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region12x,3),levels=lev12x)
     if fit18:
         ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region18x,3),lev18x,linestyles='--',linewidths=hl_lw,colors='black',alpha=0.8)
-    ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region18y,3),[s18.max()*0.8],linewidths=hl_lw+1,colors='black',alpha=0.8)
+        ax1x.contour(velocity[v1:v2],np.arange(y-dy,y+dy),np.rot90(region18y,3),[s18.max()*0.8],linewidths=hl_lw+1,colors='black',alpha=0.8)
     ax1x.plot(velocity[v1:v2],np.ones(velocity[v1:v2].shape)*y,'--')
 
     #===CO12 Colorbar Hacks======================================
@@ -489,7 +525,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax2.plot(xx,s12,label='CO12')
     ax2.plot(xx[m],s12[m],'ko',label='Masked CO12 Data')
     ax2.plot(xx,gaussian(xx,popt12[0],popt12[1],popt12[2]),label='Fit to Masked Data')
-    if (np.abs(sd12)<np.abs(popt12)).all():
+    if fit12:
         ax2.fill_between(xx,gaussian(xx,popt12[0]-sd12[0],popt12[1]-sd12[1],popt12[2]-sd12[2]),gaussian(xx,popt12[0]+sd12[0],popt12[1]+sd12[1],popt12[2]+sd12[2]),alpha=0.25)
     ax2.annotate(r'Fit Parameters for CO12: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt12[0],sd12[0],popt12[1],sd12[1],popt12[2],sd12[2]),(x_p,y_p))
     hline=np.linspace(popt12[1]-FWHM12/2,popt12[1]+FWHM12/2,10)
@@ -507,7 +543,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax3.set_title('$^{13}CO$ // $FWHM=$%0.3f'%(FWHM13))
     ax3.plot(xx,s13,'ko',label='CO13')
     ax3.plot(xx,gaussian(xx,popt13[0],popt13[1],popt13[2]),label='Fit to CO13')
-    if (np.abs(sd13)<np.abs(popt13)).all():
+    if fit13:
         ax3.fill_between(xx,gaussian(xx,popt13[0]-sd13[0],popt13[1]-sd13[1],popt13[2]-sd13[2]),gaussian(xx,popt13[0]+sd13[0],popt13[1]+sd13[1],popt13[2]+sd13[2]),alpha=0.25)
     ax3.annotate(r'Fit Parameters for CO13: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt13[0],sd13[0],popt13[1],sd13[1],popt13[2],sd13[2]),(x_p,y_p))
     hline=np.linspace(popt13[1]-FWHM13/2,popt13[1]+FWHM13/2,10)
@@ -523,10 +559,10 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     y_p=s18.max()
     ax4.set_title(r'$C^{18}O$ // $FWHM=$%0.3f'%(FWHM18))
     ax4.plot(xx,s18,'ko',label='C18O')
-    ax4.plot(xx,gaussian(xx,popt18[0],popt18[1],popt18[2]),label='Fit to CO18')
-    ax4.fill_between(xx,gaussian(xx,popt18[0]-sd18[0],popt18[1]-sd18[1],popt18[2]-sd18[2]),gaussian(xx,popt18[0]+sd18[0],popt18[1]+sd18[1],popt18[2]+sd18[2]),alpha=0.25)
-    ax4.annotate(r'Fit Parameters for CO18: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt18[0],sd18[0],popt18[1],sd18[1],popt18[2],sd18[2]),(x_p,y_p))
     if fit18:
+        ax4.plot(xx,gaussian(xx,popt18[0],popt18[1],popt18[2]),label='Fit to CO18')
+        ax4.fill_between(xx,gaussian(xx,popt18[0]-sd18[0],popt18[1]-sd18[1],popt18[2]-sd18[2]),gaussian(xx,popt18[0]+sd18[0],popt18[1]+sd18[1],popt18[2]+sd18[2]),alpha=0.25)
+        ax4.annotate(r'Fit Parameters for CO18: $A=$%0.3f +/-%0.3f, $x_0=$%0.3f +/-%0.3f, $\sigma=$%0.3f +/-%0.3f'%(popt18[0],sd18[0],popt18[1],sd18[1],popt18[2],sd18[2]),(x_p,y_p))
         hline=np.linspace(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,10)
         ax4.plot(hline,np.ones(hline.shape)*popt18[0]/2,color='r',label='HalfMaximum of fit CO18')
         ax4.axvspan(popt18[1]-FWHM18/2,popt18[1]+FWHM18/2,alpha=0.15)
@@ -552,3 +588,5 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,ta12,ta13,Tx12,Tx
     ax6.legend()
 
     plt.tight_layout()
+    plt.savefig('full%d-%d'%(y,x),bbox_inches='tight')
+    t.write('t%d-%d.tex'%(y,x),format='latex')
