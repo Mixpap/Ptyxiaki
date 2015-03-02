@@ -278,7 +278,7 @@ def MassEst(od,TR,Tex,d,res,j,i,X,fco):
     MGas=1.13*(1E-4)*(1E-6)*2.8*mH2*dist*dist*sq_pxsz*X*Nco/Msol
     return MGas
 
-def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv,gf):
+def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv,gf,s):
     """
     To use with IPython interact
     """
@@ -588,5 +588,6 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     ax6.legend()
 
     plt.tight_layout()
-    plt.savefig('full%d-%d'%(y,x),bbox_inches='tight')
-    t.write('t%d-%d.tex'%(y,x),format='latex')
+    if s:
+        plt.savefig('full%d-%d'%(y,x),bbox_inches='tight')
+        t.write('t%d-%d.tex'%(y,x),format='latex')
