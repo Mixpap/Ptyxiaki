@@ -309,6 +309,12 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     sd12= np.sqrt(np.diag(pcov12))      #Standard Deviation
     fit12 = (sd12<gf*np.abs(popt12)).all() #Good Fit?
     FWHM12=2.355*np.abs(popt12[2])      #Fitted Full Width Half Maximum
+    FWTM12=1.865*FWHM12
+    
+    outflow=False
+    if (FWTM12>4.):
+	outflow=True
+
     FWHM12t=0.00001*2.355*np.sqrt(k_b*Tx12[y,x]/(m_CO12*amu)) #theoretical (thermal)
     ########################################
     # s912=Spectra9(map12,y,x)[0]
@@ -340,20 +346,37 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
     #================TABLE========================================
-    # col1=[r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$','$C^{18}O$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
-    # i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
-    # MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
-    # col2=np.array(['%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f K'%Tx18[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12,'%0.2f $M_{\odot}$'%MG])
-    # col3=np.array(['','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,'',''])
-    # t=Table([col1,col2,col3],names=('Name','Value','Theoretical'),meta={'name': 'first table'})
-    # display(t)
-    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
+    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{12}CO$ FWTM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM', r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
     i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
     MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
-    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f $km\,s^{-1}$'%FWHM12,'%0.2f $km\,s^{-1}$'%FWHM13,'%0.2f $km\,s^{-1}$'%FWHM18,'%0.2f $K\,km\,s^{-1}$'%i12,'%0.2f $M_{\odot}$'%MG])
-    col3=np.array(['','','','','','','%0.2f (thermal)'%FWHM12t,'%0.2f (thermal)'%FWHM13t,'%0.2f (thermal)'%FWHM18t,'',''])
-    t=Table([col1,col2,col3],names=('Name','Value','Theoretical'),meta={'name': 'first table'})
+    
+    if outflow:
+        si='%0.2f $K\,km\,s^{-1}$'%i12
+        sm='%0.2f $M_{\odot}$'%MG
+    else:
+        si='0.0 (%0.2f) $K\,km\,s^{-1}$'%i12
+        sm='0.0 (%0.2f) $M_{\odot}$'%MG
+
+    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t),'%0.2f $km\,s^{-1}$'%FWTM12,'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t),'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t),si,sm])
+
+    t=Table([col1,col2],names=('Name','Value'),meta={'name': 'first table'})
     display(t)
+    #col1=np.array(['$^{12}CO$ $T_{B}$','%0.2f'%map12m[y,x]])
+    #col2=np.array(['$^{13}CO$ $T_{B}$','%0.2f'%map13m[y,x]])
+    #col3=np.array(['$C^{18}O$ $T_{B}$','%0.2f'%map18m[y,x]])
+    #col4=np.array([r'$\tau^{12}$','%0.2f'%ta12[y,x]])
+    #col5=np.array([r'$\tau^{13}$','%0.2f'%ta13[y,x]])
+    #col6=np.array(['$^{12}CO$ $T_{X}$','%0.2f K'%Tx12[y,x]])
+    #col7=np.array(['$^{13}CO$ $T_{X}$','%0.2f K'%Tx13[y,x]])
+    #col8=np.array([r'$^{12}CO$ FWHM','%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t)])
+    #col9=np.array([r'$^{13}CO$ FWHM','%0.2f $km\,s^{-1}$'%FWTM12])
+    #col10=np.array(['$^{13}CO$ $T_{B}$','%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t)])
+    #col11=np.array([r'$C^{18}O$ FWHM','%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t)])
+    #col12=np.array([r'$^{12}CO$ Wings Integral',si])
+    #col13=np.array(['$^{12}CO$ Wings Mass',sm])
+
+    #t=Table([col1,col2,col3,col4,col5,col6,col7,col8,col9,col10,col11,col12,col13])
+    #display(t)
     #t.write('test.tex',format='latex')
 
     #================Print==============================================
@@ -367,6 +390,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     # print 'C18O FWHM: %0.2f km/s || Theoretical (thermal): %0.2f km/s (Ratio:%0.2f) || Larson L: %0.2f pc || Larson M: %0.2f Mo'%(FWHM18,FWHM18t,FWHM18/FWHM18t,(FWHM18/1.1)**(1/0.38),(FWHM18/0.42)**(1/0.2))
     # if fit13:
     #     print 'Wings Integral in $^{12}CO$: %0.2f K'%(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())
+
     #===========================================================================
     #===========PLOTS=======================
     #===========================================================================
@@ -377,7 +401,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
 
     #===========================================
     #===Map=====================================
-    gs = gridspec.GridSpec(12, 8)
+    gs = gridspec.GridSpec(11, 8)
 
     #====ax1-Main Map===============================
     ax1=plt.subplot(gs[1:5,2:7])    #Axis for Main Map
@@ -572,22 +596,24 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     ax5.set_title(r'$^{12}CO$ Wings')
     ax5.fill_between(xx[xx<popt13[1]-FWHM13/2],s12[xx<popt13[1]-FWHM13/2],alpha=0.7)
     ax5.fill_between(xx[xx>popt13[1]+FWHM13/2],s12[xx>popt13[1]+FWHM13/2],alpha=0.7)
+    if outflow:
+	ax5.annotate(r'Outflow Mass Estimation: %0.2f $M_{\odot}$'%MG,(x_p,y_p) ,fontsize=17)
 
-    ax6=plt.subplot(gs[11:,:],sharex=ax2)
-    ax6.set_title('3X3 Mean and Standard Deviation Spectrum')
-    ave12=Spectra9(map12,y,x)
-    ave13=Spectra9(map13,y,x)
-    ave18=Spectra9(map18,y,x)
-    ax6.plot(xx,ave12[0],color='blue',label='CO12 Mean')
-    ax6.fill_between(xx,ave12[0]-ave12[1],ave12[0]+ave12[1],color='blue',alpha=0.25)
-    ax6.plot(xx,ave13[0],color='green',label='CO12 Mean')
-    ax6.fill_between(xx,ave13[0]-ave13[1],ave13[0]+ave13[1],color='green',alpha=0.25)
-    ax6.plot(xx,ave18[0],color='red',label='CO12 Mean')
-    ax6.fill_between(xx,ave18[0]-ave18[1],ave18[0]+ave18[1],color='red',alpha=0.25)
+    #ax6=plt.subplot(gs[11:,:],sharex=ax2)
+    #ax6.set_title('3X3 Mean and Standard Deviation Spectrum')
+    #ave12=Spectra9(map12,y,x)
+    #ave13=Spectra9(map13,y,x)
+    #ave18=Spectra9(map18,y,x)
+    #ax6.plot(xx,ave12[0],color='blue',label='CO12 Mean')
+    #ax6.fill_between(xx,ave12[0]-ave12[1],ave12[0]+ave12[1],color='blue',alpha=0.25)
+    #ax6.plot(xx,ave13[0],color='green',label='CO12 Mean')
+    #ax6.fill_between(xx,ave13[0]-ave13[1],ave13[0]+ave13[1],color='green',alpha=0.25)
+    #ax6.plot(xx,ave18[0],color='red',label='CO12 Mean')
+    #ax6.fill_between(xx,ave18[0]-ave18[1],ave18[0]+ave18[1],color='red',alpha=0.25)
     # ax6.plot(xx,gaussian(xx,popt913[0],popt913[1],popt913[2]),'--',linewidth=3.,label='Fit')
-    ax6.legend()
+    #ax6.legend()
 
     plt.tight_layout()
     if s:
         plt.savefig('full%d-%d'%(y,x),bbox_inches='tight')
-        t.write('t%d-%d.tex'%(y,x),format='latex')
+        #t.write('t%d-%d.tex'%(y,x),format='latex')
