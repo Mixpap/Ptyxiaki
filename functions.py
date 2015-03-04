@@ -39,7 +39,7 @@ m_C18O=29.999 #atomic units
 amu=1.66e-24 #g
 k_b=1.38e-16 #erg/K
 
-vres=0.013663646229508
+vres=0.83
 velocity=np.array([-20.06933116, -20.90281358, -21.736296  , -22.56977842,
        -23.40326084, -24.23674326, -25.07022567, -25.90370809,
        -26.73719051, -27.57067293, -28.40415535, -29.23763777,
@@ -275,7 +275,7 @@ def MassEst(od,TR,Tex,d,res,j,i,X,fco):
     term3=2.765*1e-9*(i*(i+1))                 ## h*vio/k
     term4=4.798*1e-11                          ## h/k
     Nco=(term1/(fco*j))*term2*np.exp(term3/Tex)*(1-np.exp(-term4*fco/Tex))*((1/(np.exp(term4*fco/Tex)-1))-(1/(np.exp(term4*fco/Tbg)-1)))**(-1)*ODcor*1e3*TR  ##should be in cm^-2
-    MGas=1.13*(1E-4)*(1E-6)*2.8*mH2*dist*dist*sq_pxsz*X*Nco/Msol
+    MGas=(1E-4)*(1E-6)*2.8*mH2*dist*dist*sq_pxsz*X*Nco/Msol
     return MGas
 
 def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv,gf,s):
@@ -310,7 +310,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     fit12 = (sd12<gf*np.abs(popt12)).all() #Good Fit?
     FWHM12=2.355*np.abs(popt12[2])      #Fitted Full Width Half Maximum
     FWTM12=1.865*FWHM12
-    
+
     outflow=False
     if (FWTM12>4.):
 	outflow=True
@@ -346,18 +346,34 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
     #================TABLE========================================
-    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{12}CO$ FWTM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM', r'$^{12}CO$ Wings Integral','$^{12}CO$ Wings Mass']
+    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{12}CO$ FWTM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Integral',r'$^{12}CO$ Core Integral', r'$^{12}CO$ Wings Integral','$^{12}CO$ Mass','$^{12}CO$ Core Mass','$^{12}CO$ Wings Mass']
+    i12all=s12.sum()*vres
     i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
+    i12core=i12all-i12 if fit13 else np.nan
     MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
-    
+    MGall=MassEst(ta12[y,x],i12all,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
+    MGcore=MassEst(ta12[y,x],i12core,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
+
     if outflow:
         si='%0.2f $K\,km\,s^{-1}$'%i12
-        sm='%0.2f $M_{\odot}$'%MG
+        sm='%0.2f $M_{\odot}$ // Ratio (all): %0.2f (core): %0.2f'%(MG,MG/MGall,MG/MGcore)
+
+        siall='%0.2f $K\,km\,s^{-1}$'%i12all
+        small='%0.2f $M_{\odot}$'%MGall
+
+        sicore='%0.2f $K\,km\,s^{-1}$'%i12core
+        smcore='%0.2f $M_{\odot}$'%MGcore
     else:
         si='0.0 (%0.2f) $K\,km\,s^{-1}$'%i12
         sm='0.0 (%0.2f) $M_{\odot}$'%MG
 
-    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t),'%0.2f $km\,s^{-1}$'%FWTM12,'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t),'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t),si,sm])
+        siall='0.0 (%0.2f) $K\,km\,s^{-1}$'%i12all
+        small='0.0 (%0.2f) $M_{\odot}$'%MGall
+
+        sicore='0.0 (%0.2f) $K\,km\,s^{-1}$'%i12core
+        smcore='0.0 (%0.2f) $M_{\odot}$'%MGcore
+
+    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t),'%0.2f $km\,s^{-1}$'%FWTM12,'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t),'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t),siall,sicore,si,small,smcore,sm])
 
     t=Table([col1,col2],names=('Name','Value'),meta={'name': 'first table'})
     display(t)
