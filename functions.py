@@ -278,6 +278,25 @@ def MassEst(od,TR,Tex,d,res,j,i,X,fco):
     MGas=(1E-4)*(1E-6)*2.8*mH2*dist*dist*sq_pxsz*X*Nco/Msol
     return MGas
 
+def Integral_to_mass(integral,Tx,tau):
+    d=2000.*pac
+    X=1./(8.5e-5)
+    A=1.28e14
+    T10=h *115.271*10**9 /k
+    T32=h *v_co12_j32*10**9 /k
+    Tbg=2.7
+    Z=0.36156*(Tx+0.922)
+    BB=np.exp(T10/Tx)
+    B=(1.-np.exp(-T32/Tx))
+    C=(1./(np.exp(T32/Tx)-1.)-1./(np.exp(T32/Tbg)-1.))**(-1)
+    D=tau/(1.-np.exp(-tau))
+    integ=integral*1000.
+
+    N=A*Z*BB*B*C*D*integ
+    M=N*2.8*(3.35e-27)*(7.7/206265)**2 *X *d**2
+
+    return M/Msol
+
 def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,Tx12,Tx13,Tx18,wcs,y,x,dy,dx,dv,gf,s):
     """
     To use with IPython interact
@@ -350,9 +369,9 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     i12all=s12.sum()*vres
     i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
     i12core=i12all-i12 if fit13 else np.nan
-    MG=MassEst(ta12[y,x],i12,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
-    MGall=MassEst(ta12[y,x],i12all,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
-    MGcore=MassEst(ta12[y,x],i12core,Tx12[y,x],d=2.,res=7.7,j=3,i=2,X=ab12CO_H2,fco=v_co12_j32*1e9) if i12 else np.nan
+    MG= Integral_to_mass(i12,Tx12[y,x],ta12[y,x]) if i12 else np.nan
+    MGall=Integral_to_mass(i12all,Tx12[y,x],ta12[y,x]) if i12 else np.nan
+    MGcore=Integral_to_mass(i12core,Tx12[y,x],ta12[y,x]) if i12 else np.nan
 
     if outflow:
         si='%0.2f $K\,km\,s^{-1}$'%i12
