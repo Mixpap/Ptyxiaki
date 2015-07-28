@@ -1,0 +1,71 @@
+\boolfalse {citerequest}\boolfalse {citetracker}\boolfalse {pagetracker}\boolfalse {backtracker}\relax 
+\defcounter {refsection}{0}\relax 
+\select@language {greek}
+\contentsline {chapter}{Περιεχόμενα}{1}
+\contentsline {chapter}{\chapternumberline {1}Μοριακά Νέφη και η Ύλη μεταξύ των Αστέρων}{5}
+\contentsline {paragraph}{Μεσοαστρικό Αέριο}{5}
+\contentsline {paragraph}{Μεσοαστρική Σκόνη}{5}
+\contentsline {section}{\numberline {1.1}Φάσεις και χαρακτηριστικά της Μεσοαστρικής Ύλης}{6}
+\contentsline {subsection}{\numberline {1.1.1}Ενεργειακή ισορροπία}{6}
+\contentsline {subsection}{\numberline {1.1.2}Παρατηρήσεις της Μεσοαστρικής Ύλης}{7}
+\contentsline {subparagraph}{Εκπομπή 21.1 cm}{7}
+\contentsline {subparagraph}{Εκπομπή \mhchem@ce@xiii {\noexpand H\noexpand \alpha }}{8}
+\contentsline {section}{\numberline {1.2}Μοριακά Νέφη}{8}
+\contentsline {subsection}{\numberline {1.2.1}Ενεργειακή ισορροπία στα Μοριακά Νέφη}{9}
+\contentsline {subsection}{\numberline {1.2.2}Δυναμική και Μορφολογία των Μοριακών Νεφών}{11}
+\contentsline {subsubsection}{\numberline {1.2.2.1}Εξισώσεις ρευστοδυναμικής}{11}
+\contentsline {subsubsection}{\numberline {1.2.2.2}Βαρυτική αστάθεια}{12}
+\contentsline {subsubsection}{\numberline {1.2.2.3}Κατακρήμνιση}{13}
+\contentsline {subsubsection}{\numberline {1.2.2.4}Χρόνος ελεύθερης πτώσης}{13}
+\contentsline {subsubsection}{\numberline {1.2.2.5}Θεώρημα Virial}{14}
+\contentsline {subsubsection}{\numberline {1.2.2.6}Ημιστατική κατάσταση}{15}
+\contentsline {subsubsection}{\numberline {1.2.2.7}Μάζα Virial}{15}
+\contentsline {subsubsection}{\numberline {1.2.2.8}Σχέσεις του Larson}{16}
+\contentsline {subsection}{\numberline {1.2.3}Τύρβη στα μοριακά νέφη}{18}
+\contentsline {subsubsection}{\numberline {1.2.3.1}Διάσταση Fractal}{18}
+\contentsline {subsection}{\numberline {1.2.4}Χρόνος ζωής των μοριακών νεφών}{19}
+\contentsline {subsection}{\numberline {1.2.5}Κατανομή μαζών των μοριακών πυρήνων}{20}
+\contentsline {subsubsection}{\numberline {1.2.5.1}Initial Mass Function}{21}
+\contentsline {paragraph}{Μορφή της IMF}{21}
+\contentsline {subsubsection}{\numberline {1.2.5.2}IMF και δημιουργία αστέρων}{21}
+\contentsline {section}{\numberline {1.3}Παρατηρήσεις των Μοριακών Νεφών}{22}
+\contentsline {subsection}{\numberline {1.3.1}Ενεργειακές μεταβάσεις του \mhchem@ce@xiii {\noexpand H\noexpand 2}}{22}
+\contentsline {subsection}{\numberline {1.3.2}Παρατηρήσεις στο \mhchem@ce@xiii {\noexpand C\noexpand O} }{23}
+\contentsline {chapter}{\chapternumberline {2}Γέννηση αστέρων στα μοριακά νέφη}{25}
+\contentsline {section}{\numberline {2.1}Κατάρρευση του μοριακού Πυρήνα}{25}
+\contentsline {subsection}{\numberline {2.1.1}Αρχικές συνθήκες}{25}
+\contentsline {subsubsection}{\numberline {2.1.1.1}Σφαίρα Bonnor-Ebert}{26}
+\contentsline {subsection}{\numberline {2.1.2}Μαγνητικά πεδία και ύλη}{26}
+\contentsline {subsubsection}{\numberline {2.1.2.1}Εξίσωση Επαγωγής}{26}
+\contentsline {subsection}{\numberline {2.1.3}Ισόθερμη κατάρρευση}{27}
+\contentsline {subsubsection}{\numberline {2.1.3.1}Ελεύθερη Πτώση}{27}
+\contentsline {subsection}{\numberline {2.1.4}Αδιαβατική Κατάρρευση}{28}
+\contentsline {subsection}{\numberline {2.1.5}Φάση Προσαύξησης}{29}
+\contentsline {section}{\numberline {2.2}Κατάρρευση περιστρεφόμενου και μαγνητισμένου μοριακού πυρήνα}{29}
+\contentsline {subsection}{\numberline {2.2.1}Η περίπτωση αργά περιστρεφόμενου πυρήνα}{29}
+\contentsline {subsection}{\numberline {2.2.2}Περίπτωση κατάρρευσης μαγνητισμένου νέφους}{31}
+\contentsline {section}{\numberline {2.3}Δίσκοι Προσαύξησης}{32}
+\contentsline {section}{\numberline {2.4}Η επίδραση των πρωτοαστέρων στο περιβάλλον τους}{33}
+\contentsline {subsection}{\numberline {2.4.1}Πίδακες και εκροές υλικού}{33}
+\contentsline {subsection}{\numberline {2.4.2}Αστέρες μεγάλης μάζας}{33}
+\contentsline {subsubsection}{\numberline {2.4.2.1}Περιοχές HII}{34}
+\contentsline {chapter}{\chapternumberline {3}Το γιγαντιαίο μοριακό νέφος W3}{37}
+\contentsline {chapter}{\chapternumberline {4}Παρατηρήσεις στο ραδιοφωνικό φάσμα}{43}
+\contentsline {section}{\numberline {4.1}Ραδιοτηλεσκόπιο JCMT}{44}
+\contentsline {section}{\numberline {4.2}Παρατήρησεις και διαμόρφωση δεδομένων}{45}
+\contentsline {subsection}{\numberline {4.2.1}Απομάκρυνση θορύβου και απεικόνιση δεδομένων}{47}
+\contentsline {chapter}{\chapternumberline {5}Ανάλυση Δεδομένων}{51}
+\contentsline {section}{\numberline {5.1}Οπτικό βάθος}{51}
+\contentsline {subsection}{\numberline {5.1.1}Παγίδευση φωτονίων}{52}
+\contentsline {subsection}{\numberline {5.1.2}Υπολογισμός Οπτικού βάθους}{53}
+\contentsline {subsubsection}{\numberline {5.1.2.1}Σφάλματα στον υπολογισμό του οπτικού βάθους}{54}
+\contentsline {subsection}{\numberline {5.1.3}Υπολογισμός της Θερμοκρασίας διέγερσης}{55}
+\contentsline {section}{\numberline {5.2}Εντοπισμός των μοριακών Outflows}{55}
+\contentsline {subsection}{\numberline {5.2.1}Αλγόριθμος προσαρμογής γκαουσιανών προφιλ στις γραμμές εκπομπής.}{58}
+\contentsline {subsection}{\numberline {5.2.2}Χάρτης κέντρου ταχύτητας}{59}
+\contentsline {subsection}{\numberline {5.2.3}Αλγόριθμος εντοπισμού περιοχών με μοριακές εκροές}{59}
+\contentsline {section}{\numberline {5.3}Εκτίμηση μάζας εκροών}{60}
+\contentsline {subsubsection}{\numberline {5.3.0.1}Παράδειγμα εκτέλεσης του αλγορίθμου}{62}
+\contentsline {chapter}{\chapternumberline {6}Συμπεράσματα και μελλοντική δουλειά}{65}
+\contentsline {chapter}{Παράρτημα}{69}
+\contentsline {chapter}{Βιβλιογραφία}{83}

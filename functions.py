@@ -365,17 +365,32 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     FWHM18t=0.00001*2.355*np.sqrt(k_b*Tx18[y,x]/(m_C18O*amu)) #theoretical (thermal)
 
     #================TABLE========================================
-    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{12}CO$ FWTM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Integral',r'$^{12}CO$ Core Integral', r'$^{12}CO$ Wings Integral','$^{12}CO$ Mass','$^{12}CO$ Core Mass','$^{12}CO$ Wings Mass']
+    col1=['$^{12}CO$ $T_{B}$','$^{13}CO$ $T_{B}$','$C^{18}O$ $T_{B}$',r'$\tau^{12}$',r'$\tau^{13}$','$^{12}CO$ $T_{X}$','$^{13}CO$ $T_{X}$',r'$^{12}CO$ FWHM',r'$^{12}CO$ FWTM',r'$^{13}CO$ FWHM',r'$C^{18}O$ FWHM',r'$^{12}CO$ Integral',r'$^{12}CO$ Core Integral', r'$^{12}CO$ Wings Integral','$^{12}CO$ Mass','$^{12}CO$ Core Mass','$^{12}CO$ Wings Mass',r'$^{12}CO$ Blue Wing Speed (Absolute)',r'$^{12}CO$ Red Wing Speed (Absolute)',r'$^{12}CO$ (Blue,Right) Wings Momentum']
+
     i12all=s12.sum()*vres
-    i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
+    i12b=s12[xx<popt13[1]-FWHM13/2].sum()*vres if fit13 else np.nan
+    i12r=s12[xx>popt13[1]+FWHM13/2].sum()*vres if fit13 else np.nan
+    i12=i12b+i12r
+    #i12=(s12[xx<popt13[1]-FWHM13/2].sum()+s12[xx>popt13[1]+FWHM13/2].sum())*vres if fit13 else np.nan
     i12core=i12all-i12 if fit13 else np.nan
+    Mb=Integral_to_mass(i12b,Tx12[y,x],ta12[y,x]) if i12b else np.nan
+    Mr=Integral_to_mass(i12r,Tx12[y,x],ta12[y,x]) if i12r else np.nan
     MG= Integral_to_mass(i12,Tx12[y,x],ta12[y,x]) if i12 else np.nan
     MGall=Integral_to_mass(i12all,Tx12[y,x],ta12[y,x]) if i12 else np.nan
     MGcore=Integral_to_mass(i12core,Tx12[y,x],ta12[y,x]) if i12 else np.nan
 
+    Vrel=popt13[1]
+    xx1=np.logical_and(xx<=Vrel-FWHM13/2,xx>=Vrel-10.)
+    xx2=np.logical_and(xx>=Vrel+FWHM13/2,xx<=Vrel+10.)
+
+    Vb=(xx[xx1]*s12[xx1]).sum()/s12[xx1].sum()
+    Vr=(xx[xx2]*s12[xx2]).sum()/s12[xx2].sum()
+    Pb=Mb*Vb/np.cos(57.3)
+    Pr=Mr*Vr/np.cos(57.3)
+
     if outflow:
         si='%0.2f $K\,km\,s^{-1}$'%i12
-        sm='%0.2f $M_{\odot}$ // Ratio (all): %0.2f (core): %0.2f'%(MG,MG/MGall,MG/MGcore)
+        sm='%0.2f $M_{\odot}$ ($M_{B}$: %0.2f, $M_{R}$: %0.2f) // Ratio (all): %0.2f (core): %0.2f'%(MG,Mb,Mr,MG/MGall,MG/MGcore)
 
         siall='%0.2f $K\,km\,s^{-1}$'%i12all
         small='%0.2f $M_{\odot}$'%MGall
@@ -392,7 +407,7 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
         sicore='0.0 (%0.2f) $K\,km\,s^{-1}$'%i12core
         smcore='0.0 (%0.2f) $M_{\odot}$'%MGcore
 
-    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t),'%0.2f $km\,s^{-1}$'%FWTM12,'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t),'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t),siall,sicore,si,small,smcore,sm])
+    col2=np.array(['%0.2f'%map12m[y,x],'%0.2f'%map13m[y,x],'%0.2f'%map18m[y,x],'%0.2f'%ta12[y,x],'%0.2f'%ta13[y,x],'%0.2f K'%Tx12[y,x],'%0.2f K'%Tx13[y,x],'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM12,FWHM12t),'%0.2f $km\,s^{-1}$'%FWTM12,'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM13,FWHM13t),'%0.2f $km\,s^{-1}$ (thermal: %0.2f)'%(FWHM18,FWHM18t),siall,sicore,si,small,smcore,sm,'%0.2f (%0.2f) $km\,s^{-1}$'%(Vb-Vrel,Vb),'%0.2f (%0.2f) $km\,s^{-1}$'%(Vr-Vrel,Vr),'%0.2f,%0.2f // %0.2f $M_{\odot} km\,s^{-1}$'%(Pb,Pr,Pb+Pr)])
 
     t=Table([col1,col2],names=('Name','Value'),meta={'name': 'first table'})
     display(t)
@@ -576,7 +591,8 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
 
     #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     #============================================================================
-    x_p=xx.min() #For Text Annotation
+    x_p=xx.min()
+    #x_mean= xx.mean() #For Text Annotation
 
     ax2=plt.subplot(gs[7,:])
     y_p=s12.max()
@@ -628,11 +644,19 @@ def map_showXY(map12,map12m,map12my,map12mx,map13,map13m,map18,map18m,ta12,ta13,
     ax4.legend()
 
     ax5=plt.subplot(gs[10,:],sharex=ax2)
+
     ax5.set_title(r'$^{12}CO$ Wings')
-    ax5.fill_between(xx[xx<popt13[1]-FWHM13/2],s12[xx<popt13[1]-FWHM13/2],alpha=0.7)
-    ax5.fill_between(xx[xx>popt13[1]+FWHM13/2],s12[xx>popt13[1]+FWHM13/2],alpha=0.7)
+    ax5.fill_between(xx[xx1],s12[xx1],alpha=0.7,color='blue')
+    ax5.fill_between(xx[xx2],s12[xx2],alpha=0.7,color='red')
     if outflow:
-	ax5.annotate(r'Outflow Mass Estimation: %0.2f $M_{\odot}$'%MG,(x_p,y_p) ,fontsize=17)
+        ax5.annotate(r'Outflow Mass Estimation: %0.2f $M_{\odot}$'%MG,(x_p,s12.max()-2),fontsize=17)
+        ax5.annotate(r'Outflow Momentum Estimation: %0.2f $M_{\odot}\, km \, s^{-1}$'%(Pb+Pr),(x_p,s12.max()-0.4*s12.max()),fontsize=17)
+        ax5.annotate(r'Blue Outflow: %0.2f $M_{\odot}$'%Mb,(popt13[1]-10,y_p),fontsize=13)
+        ax5.annotate(r'$V_B:$ %0.2f $km\,s^{-1}$'%Vb,(Vb,y_p+5),fontsize=12)
+        ax5.annotate(r'$V_R:$ %0.2f $km\,s^{-1}$'%Vr,(Vr,y_p+5),fontsize=12)
+        ax5.annotate(r'Red Outflow: %0.2f $M_{\odot}$'%Mr,(popt13[1]+5,y_p),fontsize=13)
+        ax5.vlines(Vb,0,s12.max())
+        ax5.vlines(Vr,0,s12.max())
 
     #ax6=plt.subplot(gs[11:,:],sharex=ax2)
     #ax6.set_title('3X3 Mean and Standard Deviation Spectrum')
